@@ -11,5 +11,7 @@ def test(test_loader, network):
         _, predicted = torch.max(outputs.data, 1)
         total += labels.size(0)
         correct += (predicted.cpu() == labels).sum()
+    accuracy = (100 * correct / total)
 
-    print('Accuracy of the network on the 10000 test images: %d %%' % (100 * correct / total))
+    print('Accuracy of the network on the ',  total, ' images: %d %%' % accuracy)
+    return accuracy

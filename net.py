@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
+import torch
 
 
 class Net(nn.Module):
@@ -61,9 +62,9 @@ class Net(nn.Module):
 
         self.fc2 = nn.Linear(self.number_of_hidden_neurons_for_1_fully_connected,
                              self.number_of_hidden_neurons_for_2_fully_connected)
-
-        self.fc3 = nn.Linear(self.number_of_hidden_neurons_for_2_fully_connected,
-                             num_classes)
+        # here the last layer has name fc instead of fc3 to be easy replaceable with resnet18 architecture
+        self.fc = nn.Linear(self.number_of_hidden_neurons_for_2_fully_connected,
+                            num_classes)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
@@ -74,5 +75,18 @@ class Net(nn.Module):
                    self.filter_size_for_2_convolution)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        x = self.fc3(x)
+        x = self.fc(x)
         return x
+
+    # representation is
+    # [torch.cuda.FloatTensor of size
+    # batch_size x
+    # number_of_filters_for_2_convolution x
+    # filter_size_for_2_convolution x
+    # filter_size_for_2_convolution
+    #  (GPU 0)]
+    def get_representation(self, x):
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        return x
+
