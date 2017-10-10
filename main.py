@@ -14,7 +14,8 @@ import natasha_resnet
 
 
 def main():
-    train_loader, test_loader = cifar.download_CIFAR100()
+    train_loader, test_loader, \
+    train_loader_for_classification, test_loader_for_classification = cifar.download_CIFAR100()
 
     ##################################################################
     #
@@ -42,10 +43,10 @@ def main():
     #
     ##################################################################
 
-    learning.learning_process(train_loader=train_loader,
+    learning.learning_process(train_loader=train_loader_for_classification,
                               network=network,
                               criterion=nn.CrossEntropyLoss(),
-                              test_loader=test_loader,
+                              test_loader=test_loader_for_classification,
                               mode=params.mode_classification)
 
     ##################################################################

@@ -14,7 +14,9 @@ num_classes = 100
 #
 ##################################################################
 
-learning_rate = 0.001
+learning_rate = 0.01
+learning_rate_decay_epoch = 10
+learning_rate_decay_coefficient = 0.5
 momentum = 0.9
 number_of_epochs = 2000
 skip_step = 2000
