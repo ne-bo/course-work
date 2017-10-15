@@ -33,7 +33,7 @@ k_for_recall = 10
 ##################################################################
 
 recover_classification = False
-learn_classification = True
+learn_classification = False
 defalut_recovery_epoch_for_classification = 160
 
 recover_classification_net_before_representation = True

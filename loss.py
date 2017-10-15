@@ -51,26 +51,25 @@ class MarginLoss(loss._Loss):
         n = input.data.shape[0]
         representation_vector_length = input[0].data.shape[0]
 
-        pdist = torch.nn.PairwiseDistance(p=2)
+        pdist = torch.nn.PairwiseDistance(p=2).cuda()
 
-        labels = target.data.cpu().numpy()
         k = 0
         result = 0.0
         for i in range(n - 1):
             distances_i = pdist(Variable(torch.ones([n - i - 1,
                                                      representation_vector_length]).cuda()) *
-                                input[i],
-                                input[i + 1:])
+                                input[i].cuda(),
+                                input[i + 1:].cuda())
             m = distances_i.data.shape[0]
             for j in range(m):
-                if labels[i] != labels[j]:
+                if target.data[i] != target.data[j]:
                     y = -1.0
                 else:
                     y = 1.0
 
-                result = result + torch.clamp(self.alpha + y * (distances_i[j] - self.bethe), min=0.0)
+                result = result + torch.clamp(self.alpha + y * (distances_i[j] - self.bethe), min=0.0).cuda()
                 k = k + 1
 
         if self.size_average:
-            result = torch.mean(result)
+            result = torch.mean(result).cuda()
         return result
