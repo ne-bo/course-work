@@ -10,9 +10,7 @@ from torch.autograd import Variable
 
 
 class MarginLoss(loss._Loss):
-    """Creates a criterion that measures the mean absolute value of the
-    element-wise difference between input `x` and target `y`:
-
+    """
     D_ij = euclidean distance between representations x_i and x_j
     y_ij = 1 if x_i and x_j represent the same object
     y_ij = -1 otherwise
@@ -20,9 +18,6 @@ class MarginLoss(loss._Loss):
     margin(i, j) := (alpha + y_ij (D_ij − betha))+
     {loss}(x, y)  = (1/n) * sum_ij (margin(i, j))
 .
-
-    `x` and `y` 2D Tensor of size `(minibatch, n)`
-
     The sum operation still operates over all the elements, and divides by `n`.
 
     The division by `n` can be avoided if one sets the constructor argument
@@ -49,7 +44,7 @@ class MarginLoss(loss._Loss):
     # returns a vector of pairwise distances between
     # the image number i and all images from
     # i + 1 till n
-    def get_distances_i(i, input, n, representation_vector_length):  # 0.559    0.000   14.655    0.000
+    def get_distances_i(i, input, n, representation_vector_length):  # 0.559    0.000   14.655    0.000 - profiler
         pdist = torch.nn.PairwiseDistance(p=2).cuda()
         return pdist(Variable(torch.ones([n - i - 1,
                                           representation_vector_length]).cuda()) *
@@ -66,7 +61,7 @@ class MarginLoss(loss._Loss):
         return Variable(torch.from_numpy(np.array(list_of_signs, ndmin=2)).float().cuda())
 
     @staticmethod
-    def get_result_i(self, i, distances_i, target, result, n):  # 72.891    0.002  339.828    0.011
+    def get_result_i(self, i, distances_i, target, result, n):  # 72.891    0.002  339.828    0.011 - profiler
         m = distances_i.data.shape[0]
         for j in range(m):
             if target.data[i] != target.data[i + 1 + j]:
