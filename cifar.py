@@ -129,7 +129,8 @@ def download_CIFAR100():
                              train=False,
                              download=True,
                              transform=transform)
-
+    # create new dataset for representational learning
+    # where in train we have first 50 classes and in test the remaining 50
     new_train_dataset = CIFAR_50_50(train,
                                     test,
                                     train_set=True,
@@ -148,12 +149,26 @@ def download_CIFAR100():
                                   shuffle=False,
                                   num_workers=2)
 
+    # create a dataset for pretraining on classification task
+    # where in all dataset we have first 50 classes
+    transform_train = transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+    ])
+
+    transform_test = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+    ])
+
     new_train_dataset_for_classification = CIFAR_50(new_train_dataset,
                                                     train_set=True,
-                                                    transform=transform)
+                                                    transform=transform_train)
     new_test_dataset_for_classification = CIFAR_50(new_test_dataset,
                                                    train_set=False,
-                                                   transform=transform)
+                                                   transform=transform_test)
     train_loader_for_classification = data.DataLoader(new_train_dataset_for_classification,
                                                       batch_size=params.batch_size,
                                                       shuffle=True,
@@ -173,3 +188,42 @@ def download_CIFAR100():
     print('new_test_dataset_for_classification', new_test_dataset_for_classification.__len__())
 
     return train_loader, test_loader, train_loader_for_classification, test_loader_for_classification
+
+
+def download_CIFAR10(batch_size=params.batch_size):
+    transform_train = transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+    ])
+
+    transform_test = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+    ])
+
+    # download existing train and test datasets where all classes are presented in train and in test
+    train = datasets.CIFAR10(root=params.data_folder,
+                             train=True,
+                             download=True,
+                             transform=transform_train)
+
+    test = datasets.CIFAR10(root=params.data_folder,
+                            train=False,
+                            download=True,
+                            transform=transform_test)
+
+    train_loader = data.DataLoader(train,
+                                   batch_size=batch_size,
+                                   shuffle=True,
+                                   num_workers=2)
+    test_loader = data.DataLoader(test,
+                                  batch_size=batch_size,
+                                  shuffle=False,
+                                  num_workers=2)
+
+    print('train ', train.__len__())
+    print('test ', test.__len__())
+
+    return train_loader, test_loader

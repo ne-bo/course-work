@@ -11,9 +11,19 @@ import torchvision.models as models
 import torch.nn as nn
 import loss
 import natasha_resnet
+from torch.optim import lr_scheduler
+import small_resnet_for_cifar
+import cProfile
+import pstats
+import io
 
 
 def main():
+    pr = cProfile.Profile()
+    pr.enable()
+
+    print('Loading data')
+
     train_loader, test_loader, \
     train_loader_for_classification, test_loader_for_classification = cifar.download_CIFAR100()
 
@@ -31,31 +41,56 @@ def main():
     # print labels
     # print(' '.join('%5s' % labels[j] for j in range(params.batch_size)))
 
-    network = net.Net(params.num_classes).cuda()
+    print('Create a network')
+    network = small_resnet_for_cifar.small_resnet_for_cifar(num_classes=params.num_classes, n=3).cuda()
 
-    network = natasha_resnet.resnet18(pretrained=True).cuda()
+    restore_epoch = 0
+    optimizer = optim.SGD(network.parameters(),
+                          lr=params.learning_rate,
+                          momentum=params.momentum)
+    ##################################################################
+    #
+    # Optional recovering from the saved file
+    #
+    ##################################################################
+    if params.recover_classification:
+        print('Restore for classification pre-training')
+        restore_epoch = params.defalut_recovery_epoch_for_classification
+        network, optimizer = utils.load_network_and_optimizer_from_checkpoint(network=network,
+                                                                              optimizer=optimizer,
+                                                                              epoch=restore_epoch)
 
-    network.fc = nn.Linear(network.fc.in_features, params.num_classes).cuda()
+    print('Create a multi_lr_scheduler')
+    # Decay LR by a factor of 0.1 every 10 epochs
+    multi_lr_scheduler = lr_scheduler.MultiStepLR(optimizer,
+                                                  milestones=[82, 123],
+                                                  gamma=0.1)
 
     ##################################################################
     #
-    # Pre-training (actually fine tuning) for classification
+    # Pre-training for classification
     #
     ##################################################################
-
-    learning.learning_process(train_loader=train_loader_for_classification,
-                              network=network,
-                              criterion=nn.CrossEntropyLoss(),
-                              test_loader=test_loader_for_classification,
-                              mode=params.mode_classification)
+    if params.learn_classification:
+        print('Start classification pretraining')
+        learning.learning_process(train_loader=train_loader_for_classification,
+                                  network=network,
+                                  criterion=nn.CrossEntropyLoss(),
+                                  test_loader=test_loader_for_classification,
+                                  mode=params.mode_classification,
+                                  optimizer=optimizer,
+                                  start_epoch=restore_epoch,
+                                  lr_scheduler=multi_lr_scheduler)
 
     ##################################################################
     #
     # Optional recovering from the saved file
     #
     ##################################################################
-    network = utils.load_network_from_checkpoint(network=network,
-                                                 epoch=params.number_of_epochs - 1)
+    if params.recover_classification_net_before_representation:
+        print('Restoring before representational training')
+        network = utils.load_network_from_checkpoint(network=network,
+                                                     epoch=160)
 
     ##################################################################
     #
@@ -63,16 +98,38 @@ def main():
     #
     ##################################################################
 
+    print('Representational training')
+
+    optimizer_for_representational_learning = optim.SGD(network.parameters(),
+                                                        lr=params.learning_rate,
+                                                        momentum=params.momentum)
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer,
+                                           step_size=params.learning_rate_decay_epoch,
+                                           gamma=params.learning_rate_decay_coefficient)
+
     learning.learning_process(train_loader=train_loader,
                               network=network,
-                              criterion=loss.margin_loss(),
+                              criterion=loss.MarginLoss(),
                               test_loader=test_loader,
-                              mode=params.mode_representation)
+                              mode=params.mode_representation,
+                              optimizer=optimizer_for_representational_learning,
+                              lr_scheduler=exp_lr_scheduler)
 
-    test.test(test_loader=train_loader,
-              network=network)
-    test.test(test_loader=test_loader,
-              network=network)
+    print("Evaluation: ")
+
+    test.test_for_representation(test_loader=train_loader,
+                                 network=network,
+                                 k=params.k_for_recall)
+    test.test_for_representation(test_loader=test_loader,
+                                 network=network,
+                                 k=params.k_for_recall)
+
+    pr.disable()
+    s = io.StringIO()
+    sortby = 'cumulative'
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    print(s.getvalue())
 
 
 if __name__ == '__main__':

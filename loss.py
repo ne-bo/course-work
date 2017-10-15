@@ -9,7 +9,7 @@ from torch.autograd import Variable
 # Sampling Matters in Deep Embedding Learning
 
 
-class margin_loss(loss._Loss):
+class MarginLoss(loss._Loss):
     """Creates a criterion that measures the mean absolute value of the
     element-wise difference between input `x` and target `y`:
 
@@ -17,7 +17,7 @@ class margin_loss(loss._Loss):
     y_ij = 1 if x_i and x_j represent the same object
     y_ij = -1 otherwise
 
-    margin(i, j) := (\alpha + y_ij (D_ij − \betha))+
+    margin(i, j) := (alpha + y_ij (D_ij − betha))+
     {loss}(x, y)  = (1/n) * sum_ij (margin(i, j))
 .
 
@@ -41,7 +41,7 @@ class margin_loss(loss._Loss):
     """
 
     def __init__(self, alpha=1.5, betha=0.3):
-        super(margin_loss, self).__init__()
+        super(MarginLoss, self).__init__()
         self.alpha = alpha
         self.bethe = betha
 
@@ -49,21 +49,26 @@ class margin_loss(loss._Loss):
         loss._assert_no_grad(target)
 
         n = input.data.shape[0]
+        representation_vector_length = input[0].data.shape[0]
 
-        distances = Variable(torch.zeros(int((n * (n-1))/2)).cuda())
+        pdist = torch.nn.PairwiseDistance(p=2)
+
         labels = target.data.cpu().numpy()
         k = 0
         result = 0.0
-        for i in range(n):
-            for j in range(i + 1, n):
-                distances[k] = torch.dist(input[i], input[j])
-
+        for i in range(n - 1):
+            distances_i = pdist(Variable(torch.ones([n - i - 1,
+                                                     representation_vector_length]).cuda()) *
+                                input[i],
+                                input[i + 1:])
+            m = distances_i.data.shape[0]
+            for j in range(m):
                 if labels[i] != labels[j]:
                     y = -1.0
                 else:
                     y = 1.0
 
-                result = result + torch.clamp(self.alpha + y * (distances[k] - self.bethe), min=0.0)
+                result = result + torch.clamp(self.alpha + y * (distances_i[j] - self.bethe), min=0.0)
                 k = k + 1
 
         if self.size_average:

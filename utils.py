@@ -16,24 +16,24 @@ def save_checkpoint(network, optimizer, epoch, filename='checkpoint.pth.tar'):
     torch.save({
                     'epoch': epoch + 1,
                     'state_dict': network.state_dict(),
-                    'optimizer': optimizer.state_dict(),
+                    'optimizer': optimizer.state_dict()
                 }, filename)
 
 
 def load_network_and_optimizer_from_checkpoint(network, optimizer, epoch):
     # optionally resume from a checkpoint
-    print("=> loading checkpoint '{}'")
-    checkpoint = torch.load(params.name_prefix_for_saved_model, '%d' % epoch)
+    print("=> loading checkpoint")
+    checkpoint = torch.load(params.name_prefix_for_saved_model + '-%d' % epoch)
     network.load_state_dict(checkpoint['state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer'])
-    print("=> loaded checkpoint '{}' (epoch {})")
+    print("=> loaded checkpoint (epoch {%d})" % epoch)
     return network, optimizer
 
 
 def load_network_from_checkpoint(network, epoch):
     # optionally resume from a checkpoint
     print("=> loading checkpoint '{}'")
-    checkpoint = torch.load(params.name_prefix_for_saved_model + '%d' % epoch)
+    checkpoint = torch.load(params.name_prefix_for_saved_model + '-%d' % epoch)
     network.load_state_dict(checkpoint['state_dict'])
     print("=> loaded checkpoint '{}' (epoch {})")
     return network
