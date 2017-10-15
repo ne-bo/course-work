@@ -1,7 +1,6 @@
 import cifar
 import learning
 import test
-import net
 import params
 import torchvision
 import utils
@@ -10,7 +9,6 @@ import torch.optim as optim
 import torchvision.models as models
 import torch.nn as nn
 import loss
-import natasha_resnet
 from torch.optim import lr_scheduler
 import small_resnet_for_cifar
 import cProfile
