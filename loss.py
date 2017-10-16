@@ -35,7 +35,7 @@ class MarginLoss(loss._Loss):
         - Target: :math:`(N, *)`, same shape as the input
     """
 
-    def __init__(self, alpha=1.5, betha=0.3):
+    def __init__(self, alpha=0.3, betha=1.2):
         super(MarginLoss, self).__init__()
         self.alpha = alpha
         self.bethe = betha
@@ -58,29 +58,38 @@ class MarginLoss(loss._Loss):
                               target[i + 1:].float().cuda()
         # we should map 0 --> 1 and non-zeero --> -1
         list_of_signs = list(map(lambda d: 1.0 if d == 0.0 else -1.0, distances_for_signs.data))
-        return Variable(torch.from_numpy(np.array(list_of_signs, ndmin=2)).float().cuda())
+        return Variable(torch.from_numpy(np.array(list_of_signs)).float().cuda())
 
     @staticmethod
     def get_result_i(self, i, distances_i, target, result, n):  # 72.891    0.002  339.828    0.011 - profiler
         m = distances_i.data.shape[0]
-        for j in range(m):
-            if target.data[i] != target.data[i + 1 + j]:
-                y = -1.0
-            else:
-                y = 1.0
+        #for j in range(m):
+        #    if target.data[i] != target.data[i + 1 + j]:
+        #        y = -1.0
+        #    else:
+        #        y = 1.0
+        #
+        #    print('self.alpha + y * (distances_i[j] - self.bethe',self.alpha + y * (distances_i[j] - self.bethe), 'i = ', i)
+        #    result = result + torch.clamp(self.alpha + y * (distances_i[j] - self.bethe), min=0.0).cuda()
+        #    print('result after add clamp', result)
 
-            result = result + torch.clamp(self.alpha + y * (distances_i[j] - self.bethe), min=0.0).cuda()
 
       #todo correct this in a right way, then replace the cycle for j with this
-      #  signs = self.get_signs_i(i, target, n)
-      #  print('distances', distances_i)
-      #  print('Variable(torch.ones([m]).cuda()) * self.bethe', Variable(torch.ones([m, 1]).fill_(self.bethe).cuda()))
-      #  distances_i_bethe = distances_i - Variable(torch.ones([m, 1]).fill_(self.bethe).cuda())
-      #  print('distances_i_bethe', distances_i_bethe)
-      #  print('signs', signs)
-      #  print('signs * distances_i_bethe', torch.transpose(distances_i_bethe, 0, 1) * torch.transpose(signs, 0, 1))
-      #  result = result + torch.clamp(self.alpha + distances_i_bethe * signs, min=0.0).cuda()
+        signs = self.get_signs_i(i, target, n)
+        distances_i_betha = torch.add(distances_i[:, 0],  -self.bethe)
 
+        distances_i_betha_star_signs = distances_i_betha * signs
+
+        distances_i_betha_star_signs_alpha = torch.add(distances_i_betha_star_signs, self.alpha)
+
+        #print('torch.clamp(distances_i_betha_star_signs_alpha, min=0.0).cuda() ',
+        #      torch.clamp(distances_i_betha_star_signs_alpha, min=0.0).cuda())
+        #input()
+
+        result = result + torch.sum(torch.clamp(distances_i_betha_star_signs_alpha, min=0.0).cuda())
+
+        #print('result in function', result)
+        #input()
         return result
 
     def forward(self, input, target):
@@ -93,7 +102,10 @@ class MarginLoss(loss._Loss):
         for i in range(n - 1):
             distances_i = self.get_distances_i(i, input, n, representation_vector_length)
             result = self.get_result_i(self, i, distances_i, target, result, n)
+            #print('result ', result, 'i = ', i)
 
         if self.size_average:
-            result = torch.mean(result).cuda()
+            #result = torch.mean(result).cuda()
+            result = torch.div(result, float(n))
+
         return result

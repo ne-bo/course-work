@@ -14,7 +14,7 @@ num_classes = 100
 #
 ##################################################################
 
-learning_rate = 0.01
+learning_rate = 0.001
 learning_rate_decay_epoch = 10
 learning_rate_decay_coefficient = 0.5
 momentum = 0.9
@@ -37,4 +37,5 @@ learn_classification = False
 defalut_recovery_epoch_for_classification = 160
 
 recover_classification_net_before_representation = True
+recover_representation_learning = False
 defalut_recovery_epoch_for_representation = 160

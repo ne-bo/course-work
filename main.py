@@ -88,7 +88,7 @@ def main():
     if params.recover_classification_net_before_representation:
         print('Restoring before representational training')
         network = utils.load_network_from_checkpoint(network=network,
-                                                     epoch=160)
+                                                     epoch=40)
 
     ##################################################################
     #
@@ -101,7 +101,15 @@ def main():
     optimizer_for_representational_learning = optim.SGD(network.parameters(),
                                                         lr=params.learning_rate,
                                                         momentum=params.momentum)
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer,
+
+    if params.recover_representation_learning:
+        print('Restore for representational learning')
+        restore_epoch = 40
+        network, optimizer_for_representational_learning = utils.load_network_and_optimizer_from_checkpoint(
+            network=network,
+            optimizer=optimizer,
+            epoch=restore_epoch)
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_for_representational_learning,
                                            step_size=params.learning_rate_decay_epoch,
                                            gamma=params.learning_rate_decay_coefficient)
 
