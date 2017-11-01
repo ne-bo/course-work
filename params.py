@@ -14,7 +14,7 @@ num_classes = 100
 #
 ##################################################################
 
-learning_rate = 0.001
+learning_rate = 0.1
 learning_rate_decay_epoch = 10
 learning_rate_decay_coefficient = 0.5
 momentum = 0.9

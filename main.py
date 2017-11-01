@@ -14,6 +14,7 @@ import small_resnet_for_cifar
 import cProfile
 import pstats
 import io
+import histogramm_loss
 
 
 def main():
@@ -22,8 +23,7 @@ def main():
 
     print('Loading data')
 
-    train_loader, test_loader, \
-    train_loader_for_classification, test_loader_for_classification = cifar.download_CIFAR100()
+    train_loader_for_classification, test_loader_for_classification = cifar.download_CIFAR100_for_classification()
 
     ##################################################################
     #
@@ -88,7 +88,7 @@ def main():
     if params.recover_classification_net_before_representation:
         print('Restoring before representational training')
         network = utils.load_network_from_checkpoint(network=network,
-                                                     epoch=40)
+                                                     epoch=160)
 
     ##################################################################
     #
@@ -98,9 +98,9 @@ def main():
 
     print('Representational training')
 
-    optimizer_for_representational_learning = optim.SGD(network.parameters(),
-                                                        lr=params.learning_rate,
-                                                        momentum=params.momentum)
+    optimizer_for_representational_learning = optim.Adam(network.parameters(),
+                                                        lr=params.learning_rate)#,
+                                                       # momentum=params.momentum)
 
     if params.recover_representation_learning:
         print('Restore for representational learning')
@@ -109,13 +109,18 @@ def main():
             network=network,
             optimizer=optimizer,
             epoch=restore_epoch)
+
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_for_representational_learning,
                                            step_size=params.learning_rate_decay_epoch,
                                            gamma=params.learning_rate_decay_coefficient)
 
+    train_loader, test_loader = cifar.download_CIFAR100_for_representation()
+
     learning.learning_process(train_loader=train_loader,
                               network=network,
                               criterion=loss.MarginLoss(),
+                              #criterion=histogramm_loss.HistogramLoss(150),
+                              #criterion=nn.CrossEntropyLoss(),
                               test_loader=test_loader,
                               mode=params.mode_representation,
                               optimizer=optimizer_for_representational_learning,
@@ -134,8 +139,8 @@ def main():
     s = io.StringIO()
     sortby = 'cumulative'
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print(s.getvalue())
+    # ps.print_stats()
+    # print(s.getvalue())
 
 
 if __name__ == '__main__':

@@ -53,6 +53,7 @@ class BasicBlock(nn.Module):
 
 class SmallResnet(nn.Module):
     def __init__(self, block, layers, num_classes):
+        #print('inside network init')
         self.inplanes = 16
         super(SmallResnet, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=3,
@@ -71,6 +72,7 @@ class SmallResnet(nn.Module):
 
         self.avgpool = nn.AvgPool2d(kernel_size=8)
         self.fc = nn.Linear(64 * block.expansion, num_classes)
+        self.last_bn = nn.BatchNorm1d(num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -115,6 +117,7 @@ class SmallResnet(nn.Module):
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         x = self.fc(x)
+        x = self.last_bn(x)# added in order to make histogramm loss work
 
         return x
 

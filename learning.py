@@ -13,6 +13,7 @@ from torch.optim import lr_scheduler
 import cProfile
 import pstats
 import io
+import cifar
 
 def learning_process(train_loader,
                      network,
@@ -38,14 +39,22 @@ def learning_process(train_loader,
         print(datetime.datetime.now())
         running_loss = 0.0
         i = 0
-        for i, data in enumerate(train_loader, 0):
 
+        # for representation we need clever sampling which should change every epoch
+        #if mode == params.mode_representation:
+        #    train_loader, test_loader, \
+        #    train_loader_for_classification, test_loader_for_classification = cifar.download_CIFAR100()
+
+        for i, data in enumerate(train_loader, 0):
+            #print('i = ', i)
             # get the inputs
             # inputs are [torch.FloatTensor of size 4x3x32x32]
             # labels are [torch.LongTensor of size 4]
             # here 4 is a batch size and 3 is a number of channels in the input images
             # 32x32 is a size of input image
             inputs, labels = data
+
+            #print('labels', labels[:6])
 
             # wrap them in Variable
             inputs, labels = Variable(inputs.cuda()), Variable(labels.cuda())
@@ -66,8 +75,10 @@ def learning_process(train_loader,
             # print statistics
             current_batch_loss = loss.data[0]
             if i % params.skip_step == 0:  # print every 2000 mini-batches
-                print('[ephoch %d, itteration in the epoch %5d] loss: %.10f' %
+                print('[ephoch %d, itteration in the epoch %5d] loss: %.20f' %
                       (epoch + 1, i + 1, current_batch_loss))
+
+                print('conv1 = ', network.conv1.weight[0][0])
 
                 r_loss.append(current_batch_loss)
                 iterations.append(total_iteration + i)
@@ -76,6 +87,8 @@ def learning_process(train_loader,
                 loss_plot = vis.line(Y=np.array(r_loss), X=np.array(iterations),
                                      #, update='append',
                                       win=loss_plot, opts=options)
+
+
 
                 # print the train accuracy at every epoch
                 # to see if it is enough to start representation training
@@ -101,7 +114,7 @@ def learning_process(train_loader,
         s = io.StringIO()
         sortby = 'tottime'
         ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats()
-        print(s.getvalue())
+        #ps.print_stats()
+        #print(s.getvalue())
 
     print('Finished Training')

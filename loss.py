@@ -63,18 +63,7 @@ class MarginLoss(loss._Loss):
     @staticmethod
     def get_result_i(self, i, distances_i, target, result, n):  # 72.891    0.002  339.828    0.011 - profiler
         m = distances_i.data.shape[0]
-        #for j in range(m):
-        #    if target.data[i] != target.data[i + 1 + j]:
-        #        y = -1.0
-        #    else:
-        #        y = 1.0
-        #
-        #    print('self.alpha + y * (distances_i[j] - self.bethe',self.alpha + y * (distances_i[j] - self.bethe), 'i = ', i)
-        #    result = result + torch.clamp(self.alpha + y * (distances_i[j] - self.bethe), min=0.0).cuda()
-        #    print('result after add clamp', result)
 
-
-      #todo correct this in a right way, then replace the cycle for j with this
         signs = self.get_signs_i(i, target, n)
         distances_i_betha = torch.add(distances_i[:, 0],  -self.bethe)
 
@@ -82,14 +71,8 @@ class MarginLoss(loss._Loss):
 
         distances_i_betha_star_signs_alpha = torch.add(distances_i_betha_star_signs, self.alpha)
 
-        #print('torch.clamp(distances_i_betha_star_signs_alpha, min=0.0).cuda() ',
-        #      torch.clamp(distances_i_betha_star_signs_alpha, min=0.0).cuda())
-        #input()
-
         result = result + torch.sum(torch.clamp(distances_i_betha_star_signs_alpha, min=0.0).cuda())
 
-        #print('result in function', result)
-        #input()
         return result
 
     def forward(self, input, target):
