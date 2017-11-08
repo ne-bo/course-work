@@ -44,9 +44,9 @@ def shuffle_with_batch_size(array, batch_size):
 
     start_batches_indices = np.arange(start=0, stop=array.shape[0], step=batch_size)
 
-    print('start_batches_indices = ', start_batches_indices)
+    #print('start_batches_indices = ', start_batches_indices)
     np.random.shuffle(start_batches_indices)
-    print('after shuffling start_batches_indices = ', start_batches_indices)
+    #print('after shuffling start_batches_indices = ', start_batches_indices)
     new_array = np.zeros(n, dtype=int)
     j = 0
     for i in start_batches_indices:
@@ -55,7 +55,7 @@ def shuffle_with_batch_size(array, batch_size):
     return new_array
 
 
-class SmartSampler(Sampler):
+class PercentageSampler(Sampler):
     """Samples elements with majority of samples with the same label
     Arguments:
         percentage (int) : percentage of samples with the same label among all sampled elements
@@ -104,6 +104,82 @@ class SmartSampler(Sampler):
         return self.batch_size
 
 
+class UniformSampler(Sampler):
+    """Samples elements with roughly uniform distribution of samples with the same label
+    Arguments:
+        percentage (int) : percentage of samples with the same label among all sampled elements
+    """
+
+    def __init__(self, data_source, batch_size, number_of_samples_with_the_same_label_in_the_batch):
+        super().__init__(data_source)
+        self.data_source = data_source
+        self.num_samples = len(self.data_source)
+        self.batch_size = batch_size
+        self.number_of_samples_with_the_same_label_in_the_batch = number_of_samples_with_the_same_label_in_the_batch
+
+    def get_indices_for_new_batch(self, remaining):
+        new_batch = np.empty(0, dtype=int)
+
+        all_remaining_labels = np.array(list(set(remaining)))
+        np.random.shuffle(all_remaining_labels)
+
+        while new_batch.shape[0] < self.batch_size:
+            # get new label
+            label = all_remaining_labels[0]
+            #print('label = ', label)
+            all_remaining_labels = all_remaining_labels[1:]
+            np.random.shuffle(all_remaining_labels)
+            # get number of samples for current label in this batch
+            number_of_sumples = np.random.randint(low=int(self.number_of_samples_with_the_same_label_in_the_batch * 0.75),
+                                                  high=int(self.number_of_samples_with_the_same_label_in_the_batch * 1.25))
+            #print('number_of_sumples = ', number_of_sumples)
+            # we will put this indices in our new batch
+            indices_to_put_in_new_batch = np.random.permutation(np.where(remaining == label)[0])[:number_of_sumples]
+            new_batch = np.hstack((new_batch, indices_to_put_in_new_batch))
+            # and remove them from the remaining part
+            #print('puted ', remaining[indices_to_put_in_new_batch].shape)
+
+
+        # and remove the tail from the batch
+        new_batch = new_batch[:self.batch_size]
+        #print('new_batch ', np.sort(remaining[new_batch]), ' new_batch.shape ', new_batch.shape)
+        #print('remaining ', remaining.shape)
+
+        return new_batch, remaining
+
+    # here we stacks arrays of batches with different main labels
+    def __iter__(self):
+        train_labels = np.array(self.data_source.train_labels)
+
+        indices_to_take = np.empty(0, dtype=int)
+        remaining = train_labels
+        number_of_batches = 0
+        while number_of_batches <= len(train_labels)// self.batch_size: #len(remaining) > self.batch_size:
+            new_batch, remaining = self.get_indices_for_new_batch(remaining)
+            # add new indices to all
+            indices_to_take = np.hstack(
+                (indices_to_take,
+                 new_batch))
+            number_of_batches = number_of_batches + 1
+
+        print('indices_to_take = ', indices_to_take.shape, ' ', indices_to_take)
+      #  print('labels to take = ', self.data_source.train_labels[indices_to_take])
+
+        shuffled_batches = shuffle_with_batch_size(indices_to_take, self.batch_size)
+
+        return iter(shuffled_batches)
+
+
+
+    def __len__(self):
+        return self.batch_size
+
+
+
+
+
+
+
 def test_sample():
     transform = transforms.Compose([transforms.ToTensor(),
                                     transforms.Normalize((0.5, 0.5, 0.5),
@@ -115,7 +191,7 @@ def test_sample():
                               transform=transform)
     train_loader = data.DataLoader(train,
                                    batch_size=params.batch_size,
-                                   sampler=SmartSampler(train, batch_size=params.batch_size, percentage=50),
+                                   sampler=PercentageSampler(train, batch_size=params.batch_size, percentage=50),
                                    num_workers=2)
     for i, d in enumerate(train_loader, 0):
         # get the inputs

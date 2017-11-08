@@ -3,6 +3,7 @@
 
 import torch
 from torch.autograd import Variable
+import numpy as np
 
 
 class HistogramLoss(torch.nn.Module):
@@ -16,6 +17,8 @@ class HistogramLoss(torch.nn.Module):
             self.t = self.t.cuda()
 
     def forward(self, features, classes):
+        #print('features ', features)
+        #print('classes ', np.sort(classes.data.cpu().numpy()))
         def histogram(inds, size):
             s_repeat_ = s_repeat.clone()
             indsa = (delta_repeat == (self.t - self.step)) & inds
@@ -23,12 +26,12 @@ class HistogramLoss(torch.nn.Module):
             s_repeat_[~(indsb | indsa)] = 0
             s_repeat_[indsa] = (s_repeat_ - Variable(self.t) + self.step)[indsa] / self.step
             s_repeat_[indsb] = (-s_repeat_ + Variable(self.t) + self.step)[indsb] / self.step
-
             return s_repeat_.sum(1) / size
 
         classes_size = classes.size()[0]
         classes_eq = (classes.repeat(classes_size, 1) == classes.view(-1, 1).repeat(1, classes_size)).data
         dists = torch.mm(features, features.transpose(0, 1))
+        #print('dists = ', dists)
         s_inds = torch.triu(torch.ones(dists.size()), 1).byte()
         if self.use_gpu:
             s_inds = s_inds.cuda()
@@ -36,6 +39,7 @@ class HistogramLoss(torch.nn.Module):
         neg_inds = ~classes_eq[s_inds].repeat(self.tsize, 1)
         pos_size = classes_eq[s_inds].sum()
         neg_size = (~classes_eq[s_inds]).sum()
+
         s = dists[s_inds].view(1, -1)
         s_repeat = s.repeat(self.tsize, 1)
         delta_repeat = (torch.floor((s_repeat.data + 1) / self.step) * self.step - 1).float()
@@ -46,8 +50,12 @@ class HistogramLoss(torch.nn.Module):
         histogram_pos_inds = torch.tril(torch.ones(histogram_pos_repeat.size()), -1).byte()
         if self.use_gpu:
             histogram_pos_inds = histogram_pos_inds.cuda()
+
         histogram_pos_repeat[histogram_pos_inds] = 0
         histogram_pos_cdf = histogram_pos_repeat.sum(0)
+
+        #print('histogram_neg ', histogram_neg )
+        #print('histogram_pos_cdf ', histogram_pos_cdf)
         loss = torch.sum(histogram_neg * histogram_pos_cdf)
 
         return loss

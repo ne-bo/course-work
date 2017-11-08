@@ -5,6 +5,7 @@
 ##################################################################
 
 batch_size = 128
+number_of_samples_with_the_same_label_in_the_batch = 8
 data_folder = "./data"
 num_classes = 100
 
@@ -18,7 +19,7 @@ learning_rate = 0.1
 learning_rate_decay_epoch = 10
 learning_rate_decay_coefficient = 0.5
 momentum = 0.9
-number_of_epochs = 165
+number_of_epochs = 161
 skip_step = 130
 name_prefix_for_saved_model = 'model-'
 mode_classification = 'classification'

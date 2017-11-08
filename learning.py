@@ -75,7 +75,7 @@ def learning_process(train_loader,
             # print statistics
             current_batch_loss = loss.data[0]
             if i % params.skip_step == 0:  # print every 2000 mini-batches
-                print('[ephoch %d, itteration in the epoch %5d] loss: %.20f' %
+                print('[ephoch %d, itteration in the epoch %5d] loss: %.30f' %
                       (epoch + 1, i + 1, current_batch_loss))
 
                 print('conv1 = ', network.conv1.weight[0][0])

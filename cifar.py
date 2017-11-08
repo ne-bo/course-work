@@ -5,7 +5,8 @@ from torch.utils.data.sampler import BatchSampler
 import torchvision.datasets as datasets
 import numpy as np
 from sklearn import model_selection
-from sampling import SmartSampler
+from sampling import PercentageSampler, UniformSampler
+
 
 # I use this class to create a dataset which consist of CIFAR100 splited on train and test such that
 # - train contains images of the first 50 classes
@@ -84,7 +85,6 @@ def create_transformations_for_test_and_train():
     return transform_test, transform_train
 
 
-
 def download_CIFAR100_for_classification():
     transform = create_transformation_for_new_dataset()
     new_test_dataset, new_train_dataset, test, train = create_new_train_and_test_datasets(transform)
@@ -119,13 +119,13 @@ def download_CIFAR100_for_representation():
     new_test_dataset, new_train_dataset, test, train = create_new_train_and_test_datasets(transform)
 
     train_loader = data.DataLoader(new_train_dataset,
-                                   #batch_size=params.batch_size,
-                                   batch_sampler=BatchSampler(sampler=SmartSampler(new_train_dataset,
-                                                                                   batch_size=params.batch_size,
-                                                                                   percentage=5),
+                                   batch_sampler=BatchSampler(
+                                       sampler=UniformSampler(new_train_dataset,
                                                               batch_size=params.batch_size,
-                                                              drop_last=True),
-                                   #shuffle=True,
+                                                              number_of_samples_with_the_same_label_in_the_batch=
+                                                              params.number_of_samples_with_the_same_label_in_the_batch),
+                                       batch_size=params.batch_size,
+                                       drop_last=True),
                                    num_workers=2)
     print('train_loader.batch_size = ', train_loader.batch_size,
           ' train_loader.batch_sampler.batch_size =', train_loader.batch_sampler.batch_size,

@@ -7,6 +7,19 @@ import torch.optim as optim
 import learning
 import utils
 from torch.optim import lr_scheduler
+import torch
+
+# Lera's implementation
+class L2Normalization(nn.Module):
+    def __init__(self):
+        super(L2Normalization, self).__init__()
+
+    def forward(self, input):
+        input = input.squeeze()
+        return input.div(torch.norm(input, dim=1).view(-1, 1))
+
+    def __repr__(self):
+        return self.__class__.__name__
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -53,7 +66,6 @@ class BasicBlock(nn.Module):
 
 class SmallResnet(nn.Module):
     def __init__(self, block, layers, num_classes):
-        #print('inside network init')
         self.inplanes = 16
         super(SmallResnet, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=3,
@@ -64,7 +76,6 @@ class SmallResnet(nn.Module):
                                bias=False)
         self.bn1 = nn.BatchNorm2d(16)
         self.relu = nn.ReLU(inplace=True)
-        #self.maxpool = nn.MaxPool2d(kernel_size=3, stride=1, padding=1) #?????
 
         self.layer1 = self._make_layer(block=block, planes=16, blocks=layers[0])
         self.layer2 = self._make_layer(block=block, planes=32, blocks=layers[1], stride=2)
@@ -72,7 +83,8 @@ class SmallResnet(nn.Module):
 
         self.avgpool = nn.AvgPool2d(kernel_size=8)
         self.fc = nn.Linear(64 * block.expansion, num_classes)
-        self.last_bn = nn.BatchNorm1d(num_classes)
+
+        self.norm = L2Normalization()
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -108,7 +120,6 @@ class SmallResnet(nn.Module):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
-        #x = self.maxpool(x)#????
 
         x = self.layer1(x)
         x = self.layer2(x)
@@ -117,7 +128,9 @@ class SmallResnet(nn.Module):
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         x = self.fc(x)
-        x = self.last_bn(x)# added in order to make histogramm loss work
+
+        x = self.norm(x)
+        #x = self.norm(x) # added in order to make histogramm loss work
 
         return x
 

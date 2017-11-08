@@ -128,9 +128,11 @@ def main():
 
     print("Evaluation: ")
 
+    print("Evaluation on train")
     test.test_for_representation(test_loader=train_loader,
                                  network=network,
                                  k=params.k_for_recall)
+    print("Evaluation on test")
     test.test_for_representation(test_loader=test_loader,
                                  network=network,
                                  k=params.k_for_recall)
