@@ -35,16 +35,18 @@ class MarginLoss(loss._Loss):
         - Target: :math:`(N, *)`, same shape as the input
     """
 
-    def __init__(self, alpha=0.3, betha=1.2):
+    def __init__(self, alpha=0.3, betha=1.0):
         super(MarginLoss, self).__init__()
         self.alpha = alpha
         self.bethe = betha
+        print('self.alpha = ',self.alpha)
+        print('self.bethe = ', self.bethe)
 
     @staticmethod
     # returns a vector of pairwise distances between
     # the image number i and all images from
     # i + 1 till n
-    def get_distances_i(i, input, n, representation_vector_length):  # 0.559    0.000   14.655    0.000 - profiler
+    def get_distances_i(i, input, n, representation_vector_length):
         pdist = torch.nn.PairwiseDistance(p=2).cuda()
         return pdist(Variable(torch.ones([n - i - 1,
                                           representation_vector_length]).cuda()) *
@@ -61,7 +63,7 @@ class MarginLoss(loss._Loss):
         return Variable(torch.from_numpy(np.array(list_of_signs)).float().cuda())
 
     @staticmethod
-    def get_result_i(self, i, distances_i, target, result, n):  # 72.891    0.002  339.828    0.011 - profiler
+    def get_result_i(self, i, distances_i, target, result, n):
         m = distances_i.data.shape[0]
 
         signs = self.get_signs_i(i, target, n)

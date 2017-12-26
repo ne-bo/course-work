@@ -15,6 +15,7 @@ import pstats
 import io
 import cifar
 
+
 def learning_process(train_loader,
                      network,
                      criterion,
@@ -41,20 +42,18 @@ def learning_process(train_loader,
         i = 0
 
         # for representation we need clever sampling which should change every epoch
-        #if mode == params.mode_representation:
+        # if mode == params.mode_representation:
         #    train_loader, test_loader, \
         #    train_loader_for_classification, test_loader_for_classification = cifar.download_CIFAR100()
 
         for i, data in enumerate(train_loader, 0):
-            #print('i = ', i)
+            # print('i = ', i)
             # get the inputs
             # inputs are [torch.FloatTensor of size 4x3x32x32]
             # labels are [torch.LongTensor of size 4]
             # here 4 is a batch size and 3 is a number of channels in the input images
             # 32x32 is a size of input image
             inputs, labels = data
-
-            #print('labels', labels[:6])
 
             # wrap them in Variable
             inputs, labels = Variable(inputs.cuda()), Variable(labels.cuda())
@@ -85,10 +84,8 @@ def learning_process(train_loader,
 
                 options = dict(legend=['loss for' + mode])
                 loss_plot = vis.line(Y=np.array(r_loss), X=np.array(iterations),
-                                     #, update='append',
-                                      win=loss_plot, opts=options)
-
-
+                                     # , update='append',
+                                     win=loss_plot, opts=options)
 
                 # print the train accuracy at every epoch
                 # to see if it is enough to start representation training
@@ -110,11 +107,11 @@ def learning_process(train_loader,
         print('total_iteration = ', total_iteration)
 
         pr.disable()
-        #s = io.FileIO('profiler-statistic')
+        # s = io.FileIO('profiler-statistic')
         s = io.StringIO()
         sortby = 'tottime'
         ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        #ps.print_stats()
-        #print(s.getvalue())
+        # ps.print_stats()
+        # print(s.getvalue())
 
     print('Finished Training')

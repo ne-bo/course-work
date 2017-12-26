@@ -15,15 +15,22 @@ import cProfile
 import pstats
 import io
 import histogramm_loss
+import birds
+import torch.utils.model_zoo
 
 
 def main():
     pr = cProfile.Profile()
     pr.enable()
 
-    print('Loading data')
+    print('Loading data ' + params.dataset)
 
-    train_loader_for_classification, test_loader_for_classification = cifar.download_CIFAR100_for_classification()
+    if params.dataset == 'cifar':
+        train_loader_for_classification, \
+        test_loader_for_classification = cifar.download_CIFAR100_for_classification()
+    if params.dataset == 'birds':
+        train_loader_for_classification, \
+        test_loader_for_classification = birds.download_BIRDS_for_classification(data_folder='CUB_200_2011')
 
     ##################################################################
     #
@@ -31,7 +38,7 @@ def main():
     #
     ##################################################################
     # get some random training images
-    # dataiter = iter(train_loader)
+    # dataiter = iter(train_loader_for_classification)
     # images, labels = dataiter.next()
     # show images
     # print("images.shape ", images.shape)
@@ -39,10 +46,14 @@ def main():
     # print labels
     # print(' '.join('%5s' % labels[j] for j in range(params.batch_size)))
 
-    print('Create a network')
-    network = small_resnet_for_cifar.small_resnet_for_cifar(num_classes=params.num_classes, n=3).cuda()
+    print('Create a network ' + params.network)
+    if params.network == 'small-resnet':
+        network = small_resnet_for_cifar.small_resnet_for_cifar(num_classes=params.num_classes, n=3).cuda()
+    if params.network == 'resnet-50':
+        network = models.resnet50(pretrained=False, num_classes=params.num_classes).cuda()
+        print(network)
 
-    restore_epoch = 0
+    restore_epoch = 160
     optimizer = optim.SGD(network.parameters(),
                           lr=params.learning_rate,
                           momentum=params.momentum)
@@ -53,7 +64,7 @@ def main():
     ##################################################################
     if params.recover_classification:
         print('Restore for classification pre-training')
-        restore_epoch = params.defalut_recovery_epoch_for_classification
+        restore_epoch = params.default_recovery_epoch_for_classification
         network, optimizer = utils.load_network_and_optimizer_from_checkpoint(network=network,
                                                                               optimizer=optimizer,
                                                                               epoch=restore_epoch)
@@ -66,7 +77,7 @@ def main():
 
     ##################################################################
     #
-    # Pre-training for classification
+    # Classification for pre-training
     #
     ##################################################################
     if params.learn_classification:
@@ -99,8 +110,8 @@ def main():
     print('Representational training')
 
     optimizer_for_representational_learning = optim.Adam(network.parameters(),
-                                                        lr=params.learning_rate)#,
-                                                       # momentum=params.momentum)
+                                                         lr=params.learning_rate)  # ,
+    # momentum=params.momentum)
 
     if params.recover_representation_learning:
         print('Restore for representational learning')
@@ -114,13 +125,16 @@ def main():
                                            step_size=params.learning_rate_decay_epoch,
                                            gamma=params.learning_rate_decay_coefficient)
 
-    train_loader, test_loader = cifar.download_CIFAR100_for_representation()
+    if params.dataset == 'cifar':
+        train_loader, test_loader = cifar.download_CIFAR100_for_representation()
+    if params.dataset == 'birds':
+        train_loader, test_loader = birds.download_BIRDS_for_representation(data_folder='CUB_200_2011')
 
     learning.learning_process(train_loader=train_loader,
                               network=network,
                               criterion=loss.MarginLoss(),
-                              #criterion=histogramm_loss.HistogramLoss(150),
-                              #criterion=nn.CrossEntropyLoss(),
+                              # criterion=histogramm_loss.HistogramLoss(150),
+                              # criterion=nn.CrossEntropyLoss(),
                               test_loader=test_loader,
                               mode=params.mode_representation,
                               optimizer=optimizer_for_representational_learning,
