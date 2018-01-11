@@ -35,7 +35,7 @@ class MarginLoss(loss._Loss):
         - Target: :math:`(N, *)`, same shape as the input
     """
 
-    def __init__(self, alpha=0.3, betha=1.0):
+    def __init__(self, alpha=0.3, betha=1.2):
         super(MarginLoss, self).__init__()
         self.alpha = alpha
         self.bethe = betha

@@ -43,21 +43,23 @@ def test_for_representation(test_loader, network, k):
         neighbors_list = neigh.kneighbors(outputs.data.cpu().numpy(), return_distance=False)
         number_of_outputs = outputs.data.shape[0]
         total_fraction_of_correct_labels_in_the_batch = 0
+        #print('all labels in test loader batch', labels.cpu().numpy())
         for i in range(number_of_outputs):
             actual_label = labels[i]
+
             # print('actual_label', actual_label)
-            # print('neighbors_list[i]', neighbors_list[i])
+            # print('neighbors_list[i]', labels.cpu().numpy()[neighbors_list[i]])
 
             fraction_of_correct_labels_among_the_k_nearest_neighbors = \
                 fraction_of_correct_labels_in_array(actual_label, neighbors_list[i], labels)
 
-            # print('fraction_of_correct_labels_among_the_k_nearest_neighbors ', fraction_of_correct_labels_among_the_k_nearest_neighbors)
+            #print('fraction_of_correct_labels_among_the_k_nearest_neighbors ', fraction_of_correct_labels_among_the_k_nearest_neighbors)
             total_fraction_of_correct_labels_in_the_batch = total_fraction_of_correct_labels_in_the_batch + \
                                                             fraction_of_correct_labels_among_the_k_nearest_neighbors
         total_number_of_batches = total_number_of_batches + 1
 
-        # print('total_fraction_of_correct_labels_in_the_batch = ', total_fraction_of_correct_labels_in_the_batch)
-        # print('number_of_outputs ', number_of_outputs)
+        #print('total_fraction_of_correct_labels_in_the_batch = ', total_fraction_of_correct_labels_in_the_batch)
+        #print('number_of_outputs ', number_of_outputs)
         fraction_for_this_batch = total_fraction_of_correct_labels_in_the_batch / float(number_of_outputs)
         total_fraction_of_correct_labels = total_fraction_of_correct_labels + fraction_for_this_batch
 

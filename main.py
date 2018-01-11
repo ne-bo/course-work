@@ -50,10 +50,18 @@ def main():
     if params.network == 'small-resnet':
         network = small_resnet_for_cifar.small_resnet_for_cifar(num_classes=params.num_classes, n=3).cuda()
     if params.network == 'resnet-50':
-        network = models.resnet50(pretrained=False, num_classes=params.num_classes).cuda()
+        network = models.resnet50(pretrained=True).cuda()
+
+        num_ftrs = network.fc.in_features
+        network.fc = torch.nn.Sequential()
+        # network.fc.add_module('shared_dropout', DropoutShared(p=.2, use_gpu=True))
+        network.fc.add_module('fc', nn.Linear(num_ftrs, params.num_classes))
+        network.fc.add_module('l2normalization',
+                              small_resnet_for_cifar.L2Normalization())  # need normalization for histogramm loss
+        network = network.cuda()
         print(network)
 
-    restore_epoch = 160
+    restore_epoch = 150
     optimizer = optim.SGD(network.parameters(),
                           lr=params.learning_rate,
                           momentum=params.momentum)
@@ -99,7 +107,7 @@ def main():
     if params.recover_classification_net_before_representation:
         print('Restoring before representational training')
         network = utils.load_network_from_checkpoint(network=network,
-                                                     epoch=160)
+                                                     epoch=150)
 
     ##################################################################
     #

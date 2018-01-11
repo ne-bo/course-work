@@ -41,11 +41,11 @@ def get_filenames_and_labels(data_folder, test_or_train='test'):
         if test_or_train == 'train' and images_labels[index] <= 100 and index <= 5863:
             images_paths.append(path)
             images_indices.append(index)
-            train_images.append(index)
+            train_images.append(path)
         if test_or_train == 'test' and images_labels[index] > 100 and index > 5836:
             images_paths.append(path)
             images_indices.append(index)
-            test_images.append(index)
+            test_images.append(path)
 
     f_i.close()
     f_l.close()
@@ -74,17 +74,25 @@ class BIRDS100(Dataset):
         self.test_labels = get_filenames_and_labels(data_folder,
                                                     test_or_train=test_or_train)
 
-        #print('self.images_paths ', self.images_paths)
+        print('self.images_labels ', self.images_labels)
 
     def __len__(self):
-        return len(self.images_paths)
+        if self.train:
+            return len(self.train_images)
+        else:
+            return len(self.test_images)
 
     def __getitem__(self, index):
         transform_for_correction = transforms.Compose([
             transforms.ToPILImage(),
         ])
-        image = self.transform(Image.open(self.images_paths[index]))
-        label = self.images_labels[index]
+        if self.train:
+            image = self.transform(Image.open(self.train_images[index]))
+            label = self.train_labels[index]
+        else:
+            image = self.transform(Image.open(self.test_images[index]))
+            label = self.test_labels[index]
+
         if image.shape[0] == 1:
             print('Grayscale image is found! ', self.images_paths[index])
             image = transform_for_correction(image)
@@ -132,7 +140,6 @@ def create_new_train_and_test_datasets(transform_train, transform_test, data_fol
 
     print('len(new_test_dataset.train_images) ', len(new_test_dataset.train_images))
     print('len(new_test_dataset.test_images) ', len(new_test_dataset.test_images))
-    input()
 
     return new_test_dataset, new_train_dataset
 
@@ -181,12 +188,14 @@ def download_BIRDS_for_representation(data_folder):
           ' train_loader.batch_sampler.batch_size =', train_loader.batch_sampler.batch_size,
 
           ' train_loader.dataset ', train_loader.dataset)
-    print('new_test_dataset', new_test_dataset.images_paths)
+    print('new_test_dataset.images_paths', new_test_dataset.images_paths)
+    print('new_test_dataset.images_labels', new_test_dataset.images_labels)
     test_loader = data.DataLoader(new_test_dataset,
                                   batch_size=params.batch_size,
-                                  drop_last=True, # we need to frop last batch because it can had length less than k
+                                  drop_last=True, # we need to drop last batch because it can had length less than k
                                   # and we won't be able to calculate recall at k
-                                  shuffle=False,
+                                  shuffle=True, # shuffle is extremely importatnt here because we take 10 neighbors
+                                  # out of 16 images in the batch
                                   num_workers=2)
 
     print('new_train_dataset ', new_train_dataset.__len__())

@@ -18,11 +18,11 @@ network = 'resnet-50' # possible values 'small-resnet', 'resnet-50'
 #
 ##################################################################
 
-learning_rate = 0.1
+learning_rate = 0.01
 learning_rate_decay_epoch = 10
 learning_rate_decay_coefficient = 0.5
 momentum = 0.9
-number_of_epochs = 300
+number_of_epochs = 160
 skip_step = 130
 name_prefix_for_saved_model = 'model-'
 mode_classification = 'classification'

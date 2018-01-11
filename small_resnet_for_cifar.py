@@ -129,8 +129,7 @@ class SmallResnet(nn.Module):
         x = x.view(x.size(0), -1)
         x = self.fc(x)
 
-        x = self.norm(x)
-        #x = self.norm(x) # added in order to make histogramm loss work
+        x = self.norm(x) # added in order to make histogramm loss work
 
         return x
 
