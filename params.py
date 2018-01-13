@@ -6,6 +6,9 @@
 
 batch_size = 16
 number_of_samples_with_the_same_label_in_the_batch = 4
+
+batch_size_for_similarity = 128
+
 data_folder = "./data"
 num_classes = 200
 
@@ -26,7 +29,7 @@ momentum = 0.9
 number_of_epochs_for_classification = 101
 number_of_epochs_for_representation = 101
 
-skip_step = 130
+skip_step = 100
 
 name_prefix_for_saved_model_for_classification = 'model-cl-'
 name_prefix_for_saved_model_for_representation = 'model-rp-'

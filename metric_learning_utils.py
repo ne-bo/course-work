@@ -18,7 +18,7 @@ def create_a_batch_of_pairs(representations, labels):
         second_elements_of_pairs = representations[i + 1:].cuda()
 
         pairs_with_i = torch.cat((first_elements_of_pairs, second_elements_of_pairs), dim=1)
-
+        #print('i for batch of pairs = ', i)
         batch_of_pairs = torch.cat((batch_of_pairs, pairs_with_i), dim=0)
 
         distances_for_pairs = torch.cat((distances_for_pairs,
@@ -31,7 +31,7 @@ def create_a_batch_of_pairs(representations, labels):
     total_number_of_pairs = batch_of_pairs.data.shape[0]
     indices = [total_number_of_pairs - 1]
     indices.extend(np.arange(0, total_number_of_pairs - 1, step=1))
-    indices = torch.cuda.LongTensor(np.array(indices).tolist()) # without this mystical casting to array and then to
+    indices = torch.cuda.LongTensor(np.array(indices).tolist())  # without this mystical casting to array and then to
     # list it doesn't work
 
     batch_of_pairs = Variable(torch.index_select(batch_of_pairs.data, dim=0, index=indices))
@@ -50,3 +50,16 @@ def create_a_batch_of_pairs(representations, labels):
     signs_for_pairs = signs_for_pairs.view(signs_for_pairs.data.shape[0])
 
     return batch_of_pairs, distances_for_pairs, signs_for_pairs
+
+
+def create_a_batch_of_pairs_i(representations, i):
+    n = representations.data.shape[0]
+    representation_vector_length = representations[0].data.shape[0]
+
+    first_elements_of_pairs = Variable(torch.ones([n, representation_vector_length]).cuda()) * representations[i].cuda()
+    second_elements_of_pairs = representations.cuda()
+
+    pairs_with_i = torch.cat((first_elements_of_pairs, second_elements_of_pairs), dim=1)
+    #print('i for batch of pairs = ', i)
+
+    return pairs_with_i

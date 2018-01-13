@@ -101,7 +101,7 @@ def learning_process(train_loader,
                     accuracy = test.test_for_classification(test_loader=test_loader,
                                                             network=network)
                 if mode == params.mode_representation:
-                    recall_at_k = test.test_for_representation(test_loader=test_loader,
+                    recall_at_k = test.full_test_for_representation(test_loader=test_loader,
                                                                network=network,
                                                                k=params.k_for_recall)
 

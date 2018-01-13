@@ -21,47 +21,23 @@ import metric_learning
 import similarity_network
 
 
-def main():
-    pr = cProfile.Profile()
-    pr.enable()
-
-    print('Loading data ' + params.dataset)
-
-    if params.dataset == 'cifar':
-        train_loader_for_classification, \
-        test_loader_for_classification = cifar.download_CIFAR100_for_classification()
-    if params.dataset == 'birds':
-        train_loader_for_classification, \
-        test_loader_for_classification = birds.download_BIRDS_for_classification(data_folder='CUB_200_2011')
-
+def debug_images_show(train_loader_for_classification):
     ##################################################################
     #
     # Images show for debug
     #
     ##################################################################
     # get some random training images
-    # dataiter = iter(train_loader_for_classification)
-    # images, labels = dataiter.next()
+    dataiter = iter(train_loader_for_classification)
+    images, labels = dataiter.next()
     # show images
-    # print("images.shape ", images.shape)
-    # utils.imshow(torchvision.utils.make_grid(images)) #images = Tensor of shape (B x C x H x W)
+    print("images.shape ", images.shape)
+    utils.imshow(torchvision.utils.make_grid(images))  # images = Tensor of shape (B x C x H x W)
     # print labels
-    # print(' '.join('%5s' % labels[j] for j in range(params.batch_size)))
+    print(' '.join('%5s' % labels[j] for j in range(params.batch_size)))
 
-    print('Create a network ' + params.network)
-    if params.network == 'small-resnet':
-        network = small_resnet_for_cifar.small_resnet_for_cifar(num_classes=params.num_classes, n=3).cuda()
-    if params.network == 'resnet-50':
-        network = models.resnet50(pretrained=True).cuda()
 
-        num_ftrs = network.fc.in_features
-        network.fc = torch.nn.Sequential()
-        network.fc.add_module('fc', nn.Linear(num_ftrs, params.num_classes))
-        network.fc.add_module('l2normalization',
-                              small_resnet_for_cifar.L2Normalization())  # need normalization for histogramm loss
-        network = network.cuda()
-        print(network)
-
+def classification_pretrainig(network, train_loader_for_classification, test_loader_for_classification):
     restore_epoch = params.default_recovery_epoch_for_classification
     optimizer = optim.SGD(network.parameters(),
                           lr=params.learning_rate,
@@ -105,6 +81,8 @@ def main():
                                   start_epoch=start_epoch,
                                   lr_scheduler=multi_lr_scheduler)
 
+
+def representations_learning(network, train_loader, test_loader):
     ##################################################################
     #
     # Optional recovering from the saved file
@@ -134,18 +112,13 @@ def main():
         restore_epoch = params.default_recovery_epoch_for_representation
         network, optimizer_for_representational_learning = utils.load_network_and_optimizer_from_checkpoint(
             network=network,
-            optimizer=optimizer,
+            optimizer=optimizer_for_representational_learning,
             epoch=restore_epoch,
             name_prefix_for_saved_model=params.name_prefix_for_saved_model_for_representation)
 
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_for_representational_learning,
                                            step_size=params.learning_rate_decay_epoch,
                                            gamma=params.learning_rate_decay_coefficient)
-
-    if params.dataset == 'cifar':
-        train_loader, test_loader = cifar.download_CIFAR100_for_representation()
-    if params.dataset == 'birds':
-        train_loader, test_loader = birds.download_BIRDS_for_representation(data_folder='CUB_200_2011')
 
     if params.learn_representation:
         learning.learning_process(train_loader=train_loader,
@@ -161,14 +134,16 @@ def main():
         print("Evaluation: ")
 
         print("Evaluation on train")
-        test.test_for_representation(test_loader=train_loader,
+        test.full_test_for_representation(test_loader=train_loader,
                                      network=network,
                                      k=params.k_for_recall)
         print("Evaluation on test")
-        test.test_for_representation(test_loader=test_loader,
+        test.full_test_for_representation(test_loader=test_loader,
                                      network=network,
                                      k=params.k_for_recall)
 
+
+def visual_similarity_learning(network, train_loader, test_loader):
     ##################################################################
     #
     # Training for visual similarity
@@ -186,17 +161,81 @@ def main():
     similarity_learning_network = similarity_network.SimilarityNetwork(
         number_of_input_features=representation_length * 2).cuda()
 
+    optimizer_for_similatity_learning = optim.SGD(similarity_learning_network.parameters(),
+                                                  lr=params.learning_rate,
+                                                  momentum=params.momentum)
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_for_similatity_learning,
+                                           step_size=params.learning_rate_decay_epoch,
+                                           gamma=params.learning_rate_decay_coefficient)
+
     metric_learning.metric_learning(train_loader,
                                     test_loader,
                                     representation_network,
                                     similarity_network=similarity_learning_network,
                                     start_epoch=0,
-                                    optimizer=optim.SGD(similarity_learning_network.parameters(),
-                                                        lr=params.learning_rate,
-                                                        momentum=params.momentum),
+                                    optimizer=optimizer_for_similatity_learning,
                                     lr_scheduler=exp_lr_scheduler,
                                     criterion=nn.L1Loss(),
                                     stage=1)
+
+
+def main():
+    pr = cProfile.Profile()
+    pr.enable()
+
+    ##################################################################
+    #
+    # Loading data images
+    #
+    ##################################################################
+    print('Loading data ' + params.dataset)
+
+    if params.dataset == 'cifar':
+        train_loader_for_classification, test_loader_for_classification = cifar.download_CIFAR100_for_classification()
+        train_loader, test_loader = cifar.download_CIFAR100_for_representation()
+
+    if params.dataset == 'birds':
+        train_loader_for_classification, test_loader_for_classification = \
+            birds.download_BIRDS_for_classification(data_folder='CUB_200_2011')
+        train_loader, test_loader = birds.download_BIRDS_for_representation(data_folder='CUB_200_2011')
+
+    # debug_images_show(train_loader_for_classification)
+
+    ##################################################################
+    #
+    # Create a network for classification pretrainig and representations learning
+    #
+    ##################################################################
+
+    print('Create a network ' + params.network)
+    if params.network == 'small-resnet':
+        network = small_resnet_for_cifar.small_resnet_for_cifar(num_classes=params.num_classes, n=3).cuda()
+    if params.network == 'resnet-50':
+        network = models.resnet50(pretrained=True).cuda()
+
+        num_ftrs = network.fc.in_features
+        network.fc = torch.nn.Sequential()
+        network.fc.add_module('fc', nn.Linear(num_ftrs, params.num_classes))
+        network.fc.add_module('l2normalization',
+                              small_resnet_for_cifar.L2Normalization())  # need normalization for histogramm loss
+        network = network.cuda()
+        print(network)
+
+    ##################################################################
+    #
+    # Do classification pretrainig and representations learning
+    #
+    ##################################################################
+    classification_pretrainig(network, train_loader_for_classification, test_loader_for_classification)
+
+    representations_learning(network, train_loader, test_loader)
+
+    ##################################################################
+    #
+    # Learn visual similarity
+    #
+    ##################################################################
+    visual_similarity_learning(network, train_loader, test_loader)
 
     pr.disable()
     s = io.StringIO()

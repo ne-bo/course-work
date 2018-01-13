@@ -65,7 +65,6 @@ def metric_learning(train_loader, test_loader,
             # zero the parameter gradients
             optimizer.zero_grad()
 
-
             # forward + backward + optimize
             similarity_outputs = similarity_network(representation_pairs)
 
@@ -102,13 +101,16 @@ def metric_learning(train_loader, test_loader,
                                      # , update='append',
                                      win=loss_plot, opts=options)
 
-                # print the quality metric
-                recall_at_k = test.test_for_representation(test_loader=test_loader,
-                                                           network=representation_network,
-                                                           k=params.k_for_recall,
-                                                           similarity_network=similarity_network)
 
         if epoch % 10 == 0:
+            # print the quality metric
+            # Here evaluation is heavy so we do it only every 10 epochs
+            print('similarity_network ', similarity_network)
+            recall_at_k = test.full_test_for_representation(test_loader=test_loader,
+                                                            network=representation_network,
+                                                            k=params.k_for_recall,
+                                                            similarity_network=similarity_network)
+
             utils.save_checkpoint(network=similarity_network,
                                   optimizer=optimizer,
                                   filename=params.name_prefix_for_similarity_saved_model + '-%d' % epoch,
@@ -153,6 +155,5 @@ def test_of_generating_batch_of_pairs():
         representation_pairs, \
         distances_for_pairs, \
         signs_for_pairs = create_a_batch_of_pairs(representation_outputs, labels)
-
 
 # test_of_generating_batch_of_pairs()
