@@ -8,6 +8,7 @@
       <w>inplanes</w>
       <w>relu</w>
       <w>resnet</w>
+      <w>softmax</w>
     </words>
   </dictionary>
 </component>

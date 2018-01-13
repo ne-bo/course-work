@@ -3,6 +3,7 @@ import torch
 from sklearn.neighbors import NearestNeighbors
 import datetime
 import numpy as np
+import metric_learning_utils
 
 
 def test_for_classification(test_loader, network):
@@ -11,13 +12,13 @@ def test_for_classification(test_loader, network):
     print('test_loader ', test_loader)
     for data in test_loader:
         images, labels = data
-        #print('labels ', labels)
+        # print('labels ', labels)
 
         outputs = network(Variable(images).cuda())
         _, predicted = torch.max(outputs.data, 1)
         total += labels.size(0)
         correct += (predicted.cpu() == labels).sum()
-        #print('total = ', total)
+        # print('total = ', total)
     accuracy = (100 * correct / total)
 
     print('Accuracy of the network on the ', total, ' images: %d %%' % accuracy)
@@ -29,39 +30,87 @@ def fraction_of_correct_labels_in_array(actual_label, array, labels):
     return float(correct_labels) / float(array.shape[0])
 
 
-def test_for_representation(test_loader, network, k):
+def get_total_fraction_of_correct_labels_and_total_number_of_batches(labels, neighbors_lists, number_of_outputs,
+                                                                     total_fraction_of_correct_labels,
+                                                                     total_number_of_batches):
+    total_fraction_of_correct_labels_in_the_batch = 0
+    for i in range(number_of_outputs):
+        actual_label = labels[i]
+
+        fraction_of_correct_labels_among_the_k_nearest_neighbors = \
+            fraction_of_correct_labels_in_array(actual_label, neighbors_lists[i], labels)
+
+        total_fraction_of_correct_labels_in_the_batch = total_fraction_of_correct_labels_in_the_batch + \
+                                                        fraction_of_correct_labels_among_the_k_nearest_neighbors
+    total_number_of_batches = total_number_of_batches + 1
+    fraction_for_this_batch = total_fraction_of_correct_labels_in_the_batch / float(number_of_outputs)
+    total_fraction_of_correct_labels = total_fraction_of_correct_labels + fraction_for_this_batch
+
+    return total_fraction_of_correct_labels, total_number_of_batches
+
+
+def fill_the_distances_matrix(distances_for_pairs, n):
+    distances_matrix = np.zeros((n, n))
+    start = 0
+    for i in range(n - 1):
+        distances_matrix[i + 1:, i] = distances_for_pairs[start: start + n - i - 1].data.cpu().numpy()
+        distances_matrix[i, i + 1:] = distances_matrix[i + 1:, i]
+        distances_matrix[i, i] = np.inf
+        start = start + n - i - 1
+    # print('distances_matrix ')
+    # print(distances_matrix)
+    return distances_matrix
+
+
+def get_neighbors_lists_from_distances_matrix(distances_matrix, k):
+    n = distances_matrix.shape[0]
+    neighbors_lists = []
+    for i in range(n):
+        neighbors_for_i = np.argsort(distances_matrix[i])[:k]
+        # print('i = ', i, ' neighbors_for_i = ', neighbors_for_i)
+        neighbors_lists.append(neighbors_for_i)
+    # print('neighbors_lists ', neighbors_lists)
+    return neighbors_lists
+
+
+def test_for_representation(test_loader, network, k, similarity_network=None):
     total_fraction_of_correct_labels = 0
     total_number_of_batches = 0
-
     for data in test_loader:
         images, labels = data
         outputs = network(Variable(images).cuda())
-
-        #print('outputs ', outputs)
-        neigh = NearestNeighbors(n_neighbors=k)
-        neigh.fit(outputs.data.cpu().numpy())
-        neighbors_list = neigh.kneighbors(outputs.data.cpu().numpy(), return_distance=False)
         number_of_outputs = outputs.data.shape[0]
-        total_fraction_of_correct_labels_in_the_batch = 0
-        #print('all labels in test loader batch', labels.cpu().numpy())
-        for i in range(number_of_outputs):
-            actual_label = labels[i]
 
-            # print('actual_label', actual_label)
-            # print('neighbors_list[i]', labels.cpu().numpy()[neighbors_list[i]])
 
-            fraction_of_correct_labels_among_the_k_nearest_neighbors = \
-                fraction_of_correct_labels_in_array(actual_label, neighbors_list[i], labels)
+        neighbors_lists = []
+        if similarity_network is None:
+            ##########################
+            # For representation test we simply compute the distances whilie nearest neighbors search
+            ##########################
+            neigh = NearestNeighbors(n_neighbors=k)
+            neigh.fit(outputs.data.cpu().numpy())
+            # these are the lists of indices (inside the current batch) of the k nearest neighbors,
+            # not the neighbors vectors themselves
+            neighbors_lists = neigh.kneighbors(outputs.data.cpu().numpy(), return_distance=False)
+        else:
+            ##########################
+            # If we have learned visual similarity distances we should find nearest neighbors in another way
+            ##########################
+            representation_pairs, \
+            distances_for_pairs, \
+            signs_for_pairs = metric_learning_utils.create_a_batch_of_pairs(outputs, labels)
 
-            #print('fraction_of_correct_labels_among_the_k_nearest_neighbors ', fraction_of_correct_labels_among_the_k_nearest_neighbors)
-            total_fraction_of_correct_labels_in_the_batch = total_fraction_of_correct_labels_in_the_batch + \
-                                                            fraction_of_correct_labels_among_the_k_nearest_neighbors
-        total_number_of_batches = total_number_of_batches + 1
+            distances_matrix = fill_the_distances_matrix(distances_for_pairs, number_of_outputs)
+            neighbors_lists = get_neighbors_lists_from_distances_matrix(distances_matrix, k)
 
-        #print('total_fraction_of_correct_labels_in_the_batch = ', total_fraction_of_correct_labels_in_the_batch)
-        #print('number_of_outputs ', number_of_outputs)
-        fraction_for_this_batch = total_fraction_of_correct_labels_in_the_batch / float(number_of_outputs)
-        total_fraction_of_correct_labels = total_fraction_of_correct_labels + fraction_for_this_batch
+        # here we add new values for current batch to the given
+        # total_fraction_of_correct_labels and total_number_of_batches
+        total_fraction_of_correct_labels, total_number_of_batches = \
+            get_total_fraction_of_correct_labels_and_total_number_of_batches(labels,
+                                                                             neighbors_lists,
+                                                                             number_of_outputs,
+                                                                             total_fraction_of_correct_labels,
+                                                                             total_number_of_batches)
 
     recall_at_k = float(total_fraction_of_correct_labels) / float(total_number_of_batches)
     print('recall_at_', k, ' of the network on the ', total_number_of_batches, ' batches: %f ' % recall_at_k)

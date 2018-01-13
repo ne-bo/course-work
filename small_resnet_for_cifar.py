@@ -9,6 +9,7 @@ import utils
 from torch.optim import lr_scheduler
 import torch
 
+
 # Lera's implementation
 class L2Normalization(nn.Module):
     def __init__(self):
@@ -198,7 +199,8 @@ def test_on_cifar_10():
     # restore_epoch = 11
     # network, optimizer = utils.load_network_and_optimizer_from_checkpoint(network=network,
     #                                                                      optimizer=optimizer,
-    #                                                                      epoch=restore_epoch)
+    #                                                                      epoch=restore_epoch,
+    # name_prefix_for_saved_model=params.name_prefix_for_saved_model_for_classification)
 
     ##################################################################
     #

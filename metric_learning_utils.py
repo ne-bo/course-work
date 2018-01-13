@@ -1,0 +1,52 @@
+import numpy as np
+import torch
+from torch.autograd import Variable
+
+import loss
+
+
+def create_a_batch_of_pairs(representations, labels):
+    labels = Variable(labels.cuda())
+    n = representations.data.shape[0]
+    representation_vector_length = representations[0].data.shape[0]
+    batch_of_pairs = torch.cat((representations[n - 2].cuda(), representations[n - 1].cuda()), dim=0).view(1, -1)
+    distances_for_pairs = loss.MarginLoss.get_distances_i(n - 2, representations, n, representation_vector_length)
+    signs_for_pairs = loss.MarginLoss.get_signs_i(n - 2, labels, n)
+    for i in range(n - 2):
+        first_elements_of_pairs = Variable(torch.ones([n - i - 1, representation_vector_length]).cuda()) * \
+                                  representations[i].cuda()
+        second_elements_of_pairs = representations[i + 1:].cuda()
+
+        pairs_with_i = torch.cat((first_elements_of_pairs, second_elements_of_pairs), dim=1)
+
+        batch_of_pairs = torch.cat((batch_of_pairs, pairs_with_i), dim=0)
+
+        distances_for_pairs = torch.cat((distances_for_pairs,
+                                         loss.MarginLoss.get_distances_i(i, representations, n,
+                                                                         representation_vector_length)), dim=0)
+        signs_for_pairs = torch.cat((signs_for_pairs, loss.MarginLoss.get_signs_i(i, labels, n)), dim=0)
+
+    # We initialized ours batch_of_pairs, distances_for_pairs and signs_for_pairs with the pair (n - 2, n - 1)
+    # but it is more beautiful and logical to have this pair in the end so let's move it in the end
+    total_number_of_pairs = batch_of_pairs.data.shape[0]
+    indices = [total_number_of_pairs - 1]
+    indices.extend(np.arange(0, total_number_of_pairs - 1, step=1))
+    indices = torch.cuda.LongTensor(np.array(indices).tolist()) # without this mystical casting to array and then to
+    # list it doesn't work
+
+    batch_of_pairs = Variable(torch.index_select(batch_of_pairs.data, dim=0, index=indices))
+    distances_for_pairs = Variable(torch.index_select(distances_for_pairs.data, dim=0, index=indices))
+    signs_for_pairs = Variable(torch.index_select(signs_for_pairs.data, dim=0, index=indices))
+
+    # Finally we have the following pairs order
+    # (0, 1),         (0, 2), ............, (0, n - 2), (0, n - 1),
+    # (1, 2),         (1, 3), ............, (1, n - 1),
+    # ...
+    # (n - 3, n - 2), (n - 3, n - 1),
+    # (n - 2, n - 1)
+
+    # reshaping of distances in signs to have 1 dimension
+    distances_for_pairs = distances_for_pairs.view(distances_for_pairs.data.shape[0])
+    signs_for_pairs = signs_for_pairs.view(signs_for_pairs.data.shape[0])
+
+    return batch_of_pairs, distances_for_pairs, signs_for_pairs

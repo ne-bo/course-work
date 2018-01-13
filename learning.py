@@ -31,7 +31,16 @@ def learning_process(train_loader,
 
     loss_plot = vis.line(Y=np.zeros(1), X=np.zeros(1))
 
-    for epoch in range(start_epoch, params.number_of_epochs):  # loop over the dataset multiple times
+    number_of_epochs = 0
+    name_prefix_for_saved_model = ''
+    if mode == params.mode_classification:
+        number_of_epochs = params.number_of_epochs_for_classification
+        name_prefix_for_saved_model = params.name_prefix_for_saved_model_for_classification
+    if mode == params.mode_representation:
+        number_of_epochs = params.number_of_epochs_for_representation
+        name_prefix_for_saved_model = params.name_prefix_for_saved_model_for_representation
+
+    for epoch in range(start_epoch, number_of_epochs):  # loop over the dataset multiple times
         pr = cProfile.Profile()
         pr.enable()
 
@@ -63,8 +72,6 @@ def learning_process(train_loader,
 
             # forward + backward + optimize
             outputs = network(inputs)
-
-            # representation = network.get_representation(inputs)
 
             loss = criterion(outputs, labels)
 
@@ -101,7 +108,7 @@ def learning_process(train_loader,
         if epoch % 10 == 0:
             utils.save_checkpoint(network=network,
                                   optimizer=optimizer,
-                                  filename=params.name_prefix_for_saved_model + '-%d' % epoch,
+                                  filename=name_prefix_for_saved_model + '-%d' % epoch,
                                   epoch=epoch)
         total_iteration = total_iteration + i
         print('total_iteration = ', total_iteration)

@@ -17,6 +17,8 @@ import io
 import histogramm_loss
 import birds
 import torch.utils.model_zoo
+import metric_learning
+import similarity_network
 
 
 def main():
@@ -54,14 +56,13 @@ def main():
 
         num_ftrs = network.fc.in_features
         network.fc = torch.nn.Sequential()
-        # network.fc.add_module('shared_dropout', DropoutShared(p=.2, use_gpu=True))
         network.fc.add_module('fc', nn.Linear(num_ftrs, params.num_classes))
         network.fc.add_module('l2normalization',
                               small_resnet_for_cifar.L2Normalization())  # need normalization for histogramm loss
         network = network.cuda()
         print(network)
 
-    restore_epoch = 150
+    restore_epoch = params.default_recovery_epoch_for_classification
     optimizer = optim.SGD(network.parameters(),
                           lr=params.learning_rate,
                           momentum=params.momentum)
@@ -75,7 +76,12 @@ def main():
         restore_epoch = params.default_recovery_epoch_for_classification
         network, optimizer = utils.load_network_and_optimizer_from_checkpoint(network=network,
                                                                               optimizer=optimizer,
-                                                                              epoch=restore_epoch)
+                                                                              epoch=restore_epoch,
+                                                                              name_prefix_for_saved_model=
+                                                                              params.name_prefix_for_saved_model_for_classification)
+        start_epoch = restore_epoch
+    else:
+        start_epoch = 0
 
     print('Create a multi_lr_scheduler')
     # Decay LR by a factor of 0.1 every 10 epochs
@@ -96,7 +102,7 @@ def main():
                                   test_loader=test_loader_for_classification,
                                   mode=params.mode_classification,
                                   optimizer=optimizer,
-                                  start_epoch=restore_epoch,
+                                  start_epoch=start_epoch,
                                   lr_scheduler=multi_lr_scheduler)
 
     ##################################################################
@@ -107,7 +113,9 @@ def main():
     if params.recover_classification_net_before_representation:
         print('Restoring before representational training')
         network = utils.load_network_from_checkpoint(network=network,
-                                                     epoch=150)
+                                                     epoch=params.default_recovery_epoch_for_classification,
+                                                     name_prefix_for_saved_model=
+                                                     params.name_prefix_for_saved_model_for_classification)
 
     ##################################################################
     #
@@ -123,11 +131,12 @@ def main():
 
     if params.recover_representation_learning:
         print('Restore for representational learning')
-        restore_epoch = 40
+        restore_epoch = params.default_recovery_epoch_for_representation
         network, optimizer_for_representational_learning = utils.load_network_and_optimizer_from_checkpoint(
             network=network,
             optimizer=optimizer,
-            epoch=restore_epoch)
+            epoch=restore_epoch,
+            name_prefix_for_saved_model=params.name_prefix_for_saved_model_for_representation)
 
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_for_representational_learning,
                                            step_size=params.learning_rate_decay_epoch,
@@ -138,26 +147,56 @@ def main():
     if params.dataset == 'birds':
         train_loader, test_loader = birds.download_BIRDS_for_representation(data_folder='CUB_200_2011')
 
-    learning.learning_process(train_loader=train_loader,
-                              network=network,
-                              criterion=loss.MarginLoss(),
-                              # criterion=histogramm_loss.HistogramLoss(150),
-                              # criterion=nn.CrossEntropyLoss(),
-                              test_loader=test_loader,
-                              mode=params.mode_representation,
-                              optimizer=optimizer_for_representational_learning,
-                              lr_scheduler=exp_lr_scheduler)
+    if params.learn_representation:
+        learning.learning_process(train_loader=train_loader,
+                                  network=network,
+                                  criterion=loss.MarginLoss(),
+                                  # criterion=histogramm_loss.HistogramLoss(150),
+                                  # criterion=nn.CrossEntropyLoss(),
+                                  test_loader=test_loader,
+                                  mode=params.mode_representation,
+                                  optimizer=optimizer_for_representational_learning,
+                                  lr_scheduler=exp_lr_scheduler)
 
-    print("Evaluation: ")
+        print("Evaluation: ")
 
-    print("Evaluation on train")
-    test.test_for_representation(test_loader=train_loader,
-                                 network=network,
-                                 k=params.k_for_recall)
-    print("Evaluation on test")
-    test.test_for_representation(test_loader=test_loader,
-                                 network=network,
-                                 k=params.k_for_recall)
+        print("Evaluation on train")
+        test.test_for_representation(test_loader=train_loader,
+                                     network=network,
+                                     k=params.k_for_recall)
+        print("Evaluation on test")
+        test.test_for_representation(test_loader=test_loader,
+                                     network=network,
+                                     k=params.k_for_recall)
+
+    ##################################################################
+    #
+    # Training for visual similarity
+    #
+    ##################################################################
+
+    print('Restoring representation network before similarity training')
+    representation_network = utils.load_network_from_checkpoint(network=network,
+                                                                epoch=params.default_recovery_epoch_for_representation,
+                                                                name_prefix_for_saved_model=
+                                                                params.name_prefix_for_saved_model_for_representation)
+
+    representation_length = next(representation_network.fc.modules()).fc.out_features
+    print('representation_length = ', representation_length)
+    similarity_learning_network = similarity_network.SimilarityNetwork(
+        number_of_input_features=representation_length * 2).cuda()
+
+    metric_learning.metric_learning(train_loader,
+                                    test_loader,
+                                    representation_network,
+                                    similarity_network=similarity_learning_network,
+                                    start_epoch=0,
+                                    optimizer=optim.SGD(similarity_learning_network.parameters(),
+                                                        lr=params.learning_rate,
+                                                        momentum=params.momentum),
+                                    lr_scheduler=exp_lr_scheduler,
+                                    criterion=nn.L1Loss(),
+                                    stage=1)
 
     pr.disable()
     s = io.StringIO()

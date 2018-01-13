@@ -11,12 +11,12 @@ from torch.autograd import Variable
 
 class MarginLoss(loss._Loss):
     """
-    D_ij = euclidean distance between representations x_i and x_j
-    y_ij = 1 if x_i and x_j represent the same object
+    D_ij =  euclidean distance between representations x_i and x_j
+    y_ij =  1 if x_i and x_j represent the same object
     y_ij = -1 otherwise
 
-    margin(i, j) := (alpha + y_ij (D_ij − betha))+
-    {loss}(x, y)  = (1/n) * sum_ij (margin(i, j))
+    margin(i, j) := (alpha + y_ij (D_ij − bethe))+
+    {loss}        = (1/n) * sum_ij (margin(i, j))
 .
     The sum operation still operates over all the elements, and divides by `n`.
 
@@ -35,10 +35,10 @@ class MarginLoss(loss._Loss):
         - Target: :math:`(N, *)`, same shape as the input
     """
 
-    def __init__(self, alpha=0.3, betha=1.2):
+    def __init__(self, alpha=0.3, bethe=1.2):
         super(MarginLoss, self).__init__()
         self.alpha = alpha
-        self.bethe = betha
+        self.bethe = bethe
         print('self.alpha = ',self.alpha)
         print('self.bethe = ', self.bethe)
 
@@ -54,26 +54,33 @@ class MarginLoss(loss._Loss):
                      input[i + 1:].cuda())
 
     @staticmethod
+    # returns signs for pairs of image number i and all image from i + 1 till n
     def get_signs_i(i, target, n):
-        # here distance wil be 0 for equal targets and non-zero for non equal
-        distances_for_signs = Variable(torch.ones([n - i - 1]).cuda()) * target[i].float().cuda() - \
-                              target[i + 1:].float().cuda()
+        # we need
+        #    y_ij =  1 if x_i and x_j represent the same object
+        #    y_ij = -1 otherwise
+
+        # here distance wil be 0 for images with equal targets (labels) and non-zero for non equal
+        distances_for_signs = \
+            Variable(torch.ones([n - i - 1]).cuda()) * target[i].float().cuda() - \
+                                                       target[i + 1:].float().cuda()
         # we should map 0 --> 1 and non-zeero --> -1
         list_of_signs = list(map(lambda d: 1.0 if d == 0.0 else -1.0, distances_for_signs.data))
         return Variable(torch.from_numpy(np.array(list_of_signs)).float().cuda())
 
     @staticmethod
+    # here we add new result value to the given result value and return the sum
     def get_result_i(self, i, distances_i, target, result, n):
         m = distances_i.data.shape[0]
 
         signs = self.get_signs_i(i, target, n)
-        distances_i_betha = torch.add(distances_i[:, 0],  -self.bethe)
+        distances_i_bethe = torch.add(distances_i[:, 0],  -self.bethe)
 
-        distances_i_betha_star_signs = distances_i_betha * signs
+        distances_i_bethe_star_signs = distances_i_bethe * signs
 
-        distances_i_betha_star_signs_alpha = torch.add(distances_i_betha_star_signs, self.alpha)
+        distances_i_bethe_star_signs_alpha = torch.add(distances_i_bethe_star_signs, self.alpha)
 
-        result = result + torch.sum(torch.clamp(distances_i_betha_star_signs_alpha, min=0.0).cuda())
+        result = result + torch.sum(torch.clamp(distances_i_bethe_star_signs_alpha, min=0.0).cuda())
 
         return result
 
@@ -83,6 +90,7 @@ class MarginLoss(loss._Loss):
         n = input.data.shape[0]
         representation_vector_length = input[0].data.shape[0]
 
+        # we should sum up distances for all pairs of inputs
         result = 0.0
         for i in range(n - 1):
             distances_i = self.get_distances_i(i, input, n, representation_vector_length)

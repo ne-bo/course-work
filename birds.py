@@ -94,11 +94,11 @@ class BIRDS100(Dataset):
             label = self.test_labels[index]
 
         if image.shape[0] == 1:
-            print('Grayscale image is found! ', self.images_paths[index])
+            # print('Grayscale image is found! ', self.images_paths[index])
             image = transform_for_correction(image)
             image = transforms.ImageOps.colorize(image, (0, 0, 0), (255, 255, 255))
             image = self.transform(image)
-            print('new image.shape ', image.shape)
+            # print('new image.shape ', image.shape)
 
         if image.shape[1] < 224 or image.shape[2] < 224:
             print('image is too small', image.shape)
@@ -190,8 +190,12 @@ def download_BIRDS_for_representation(data_folder):
           ' train_loader.dataset ', train_loader.dataset)
     print('new_test_dataset.images_paths', new_test_dataset.images_paths)
     print('new_test_dataset.images_labels', new_test_dataset.images_labels)
+    print('ful batch size = ', len(new_test_dataset.test_labels))
     test_loader = data.DataLoader(new_test_dataset,
+
+                                  # unfortunately we don't have enough memory to evaluate easily on FULL test
                                   batch_size=params.batch_size,
+
                                   drop_last=True, # we need to drop last batch because it can had length less than k
                                   # and we won't be able to calculate recall at k
                                   shuffle=True, # shuffle is extremely importatnt here because we take 10 neighbors
