@@ -1,6 +1,8 @@
 import torch.optim as optim
 from torch.autograd import Variable
 import torch.nn as nn
+
+import metric_learning_utils
 import params
 import utils
 import torch
@@ -101,9 +103,11 @@ def learning_process(train_loader,
                     accuracy = test.test_for_classification(test_loader=test_loader,
                                                             network=network)
                 if mode == params.mode_representation:
-                    recall_at_k = test.full_test_for_representation(test_loader=test_loader,
-                                                               network=network,
-                                                               k=params.k_for_recall)
+                    all_outputs_test, all_labels_test = metric_learning_utils.get_all_outputs_and_labels(test_loader,
+                                                                                                         network)
+                    recall_at_k = test.full_test_for_representation(k=params.k_for_recall,
+                                                                    all_outputs=all_outputs_test,
+                                                                    all_labels=all_labels_test)
 
         if epoch % 10 == 0:
             utils.save_checkpoint(network=network,

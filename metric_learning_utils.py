@@ -63,3 +63,16 @@ def create_a_batch_of_pairs_i(representations, i):
     #print('i for batch of pairs = ', i)
 
     return pairs_with_i
+
+
+def get_all_outputs_and_labels(test_loader, network):
+    all_outputs = torch.cuda.FloatTensor()
+    all_labels = torch.LongTensor()
+    for data in test_loader:
+        images, labels = data
+        outputs = network(Variable(images).cuda())
+        all_outputs = torch.cat((all_outputs, outputs.data), dim=0)
+        all_labels = torch.cat((all_labels, labels), dim=0)
+    print('all_outputs', all_outputs)
+    print('all_labels', all_labels)
+    return all_outputs, all_labels

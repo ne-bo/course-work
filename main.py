@@ -1,5 +1,6 @@
 import cifar
 import learning
+import metric_learning_utils
 import test
 import params
 import torchvision
@@ -132,15 +133,15 @@ def representations_learning(network, train_loader, test_loader):
                                   lr_scheduler=exp_lr_scheduler)
 
         print("Evaluation: ")
+        all_outputs_train, all_labels_train = metric_learning_utils.get_all_outputs_and_labels(train_loader, network)
+        all_outputs_test, all_labels_test = metric_learning_utils.get_all_outputs_and_labels(test_loader, network)
 
         print("Evaluation on train")
-        test.full_test_for_representation(test_loader=train_loader,
-                                     network=network,
-                                     k=params.k_for_recall)
+        test.full_test_for_representation(k=params.k_for_recall,
+                                          all_outputs=all_outputs_train, all_labels=all_labels_train)
         print("Evaluation on test")
-        test.full_test_for_representation(test_loader=test_loader,
-                                     network=network,
-                                     k=params.k_for_recall)
+        test.full_test_for_representation(k=params.k_for_recall,
+                                          all_outputs=all_outputs_test, all_labels=all_labels_test)
 
 
 def visual_similarity_learning(network, train_loader, test_loader):
@@ -161,22 +162,24 @@ def visual_similarity_learning(network, train_loader, test_loader):
     similarity_learning_network = similarity_network.SimilarityNetwork(
         number_of_input_features=representation_length * 2).cuda()
 
-    optimizer_for_similatity_learning = optim.SGD(similarity_learning_network.parameters(),
+    optimizer_for_similarity_learning = optim.SGD(similarity_learning_network.parameters(),
                                                   lr=params.learning_rate,
                                                   momentum=params.momentum)
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_for_similatity_learning,
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_for_similarity_learning,
                                            step_size=params.learning_rate_decay_epoch,
                                            gamma=params.learning_rate_decay_coefficient)
 
+    all_outputs_test, all_labels_test = \
+        metric_learning_utils.get_all_outputs_and_labels(test_loader, representation_network)
     metric_learning.metric_learning(train_loader,
-                                    test_loader,
                                     representation_network,
                                     similarity_network=similarity_learning_network,
                                     start_epoch=0,
-                                    optimizer=optimizer_for_similatity_learning,
+                                    optimizer=optimizer_for_similarity_learning,
                                     lr_scheduler=exp_lr_scheduler,
                                     criterion=nn.L1Loss(),
-                                    stage=1)
+                                    stage=1,
+                                    all_outputs_test=all_outputs_test, all_labels_test=all_labels_test)
 
 
 def main():

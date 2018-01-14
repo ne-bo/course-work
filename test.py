@@ -4,6 +4,7 @@ from sklearn.neighbors import NearestNeighbors
 import datetime
 import numpy as np
 import metric_learning_utils
+import gc
 
 
 def test_for_classification(test_loader, network):
@@ -113,7 +114,9 @@ def get_neighbors_lists(k, labels, number_of_outputs, outputs, similarity_networ
             distances_matrix = add_distances_matrix_i(distances_matrix_i, distances_matrix, i)
 
         neighbors_lists = get_neighbors_lists_from_distances_matrix(distances_matrix, k)
+        gc.collect()
     return neighbors_lists
+
 
 # currently is not in use, but I want to save it for some time
 def test_for_representation(test_loader, network, k, similarity_network=None):
@@ -141,19 +144,10 @@ def test_for_representation(test_loader, network, k, similarity_network=None):
     return recall_at_k
 
 
-def full_test_for_representation(test_loader, network, k, similarity_network=None):
+def full_test_for_representation(k, all_outputs, all_labels, similarity_network=None):
     total_fraction_of_correct_labels = 0
     total_number_of_batches = 0
-    all_outputs = torch.cuda.FloatTensor()
-    all_labels = torch.LongTensor()
 
-    for data in test_loader:
-        images, labels = data
-        outputs = network(Variable(images).cuda())
-        all_outputs = torch.cat((all_outputs, outputs.data), dim=0)
-        all_labels = torch.cat((all_labels, labels), dim=0)
-    print('all_outputs', all_outputs)
-    print('all_labels', all_labels)
     number_of_outputs = all_outputs.shape[0]
 
     neighbors_lists = get_neighbors_lists(k, all_labels, number_of_outputs, Variable(all_outputs), similarity_network)

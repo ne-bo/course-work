@@ -1,5 +1,6 @@
 import torchvision.models as models
 
+import metric_learning_utils
 from metric_learning_utils import create_a_batch_of_pairs
 from small_resnet_for_cifar import L2Normalization
 import birds
@@ -18,12 +19,12 @@ import pstats
 import io
 
 
-def metric_learning(train_loader, test_loader,
+def metric_learning(train_loader,
                     representation_network, similarity_network,
                     start_epoch,
                     optimizer,
                     lr_scheduler,
-                    criterion, stage):
+                    criterion, stage, all_outputs_test, all_labels_test):
     vis = visdom.Visdom()
     r_loss = []
     iterations = []
@@ -101,14 +102,13 @@ def metric_learning(train_loader, test_loader,
                                      # , update='append',
                                      win=loss_plot, opts=options)
 
-
         if epoch % 10 == 0:
             # print the quality metric
             # Here evaluation is heavy so we do it only every 10 epochs
             print('similarity_network ', similarity_network)
-            recall_at_k = test.full_test_for_representation(test_loader=test_loader,
-                                                            network=representation_network,
-                                                            k=params.k_for_recall,
+
+            recall_at_k = test.full_test_for_representation(k=params.k_for_recall,
+                                                            all_outputs=all_outputs_test, all_labels=all_labels_test,
                                                             similarity_network=similarity_network)
 
             utils.save_checkpoint(network=similarity_network,
