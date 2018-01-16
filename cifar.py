@@ -168,7 +168,7 @@ def create_new_train_and_test_datasets(transform):
     return new_test_dataset, new_train_dataset, test, train
 
 
-def download_CIFAR10(batch_size=params.batch_size):
+def download_CIFAR10(batch_size=params.batch_size_for_cifar):
     transform_test, transform_train = create_transformations_for_test_and_train()
 
     # download existing train and test datasets where all classes are presented in train and in test

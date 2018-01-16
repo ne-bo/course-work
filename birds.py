@@ -153,13 +153,13 @@ def download_BIRDS_for_classification(data_folder):
         data_folder)
 
     train_loader_for_classification = data.DataLoader(train_dataset_for_classification,
-                                                      batch_size=params.batch_size,
+                                                      batch_size=params.batch_size_for_classification,
                                                       shuffle=True,
                                                       num_workers=2)
     test_loader_for_classification = data.DataLoader(train_dataset_for_classification,  # here for preclassification
                                                      # we just take train and test sets the same
                                                      # containing first 100 classes
-                                                     batch_size=params.batch_size,
+                                                     batch_size=params.batch_size_for_classification,
                                                      shuffle=False,
 
                                                      num_workers=2)
@@ -178,10 +178,10 @@ def download_BIRDS_for_representation(data_folder):
     train_loader = data.DataLoader(new_train_dataset,
                                    batch_sampler=BatchSampler(
                                        sampler=UniformSampler(new_train_dataset,
-                                                              batch_size=params.batch_size,
+                                                              batch_size=params.batch_size_for_representation,
                                                               number_of_samples_with_the_same_label_in_the_batch=
                                                               params.number_of_samples_with_the_same_label_in_the_batch),
-                                       batch_size=params.batch_size,
+                                       batch_size=params.batch_size_for_representation,
                                        drop_last=True),
                                    num_workers=2)
     print('train_loader.batch_size = ', train_loader.batch_size,
@@ -194,7 +194,7 @@ def download_BIRDS_for_representation(data_folder):
     test_loader = data.DataLoader(new_test_dataset,
 
                                   # unfortunately we don't have enough memory to evaluate easily on FULL test
-                                  batch_size=params.batch_size,
+                                  batch_size=params.batch_size_for_representation,
 
                                   drop_last=True, # we need to drop last batch because it can had length less than k
                                   # and we won't be able to calculate recall at k

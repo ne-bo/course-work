@@ -5,6 +5,16 @@ from torch.autograd import Variable
 import loss
 
 
+# returns a vector of pairwise cosine similarities between
+# the image number i and all images from
+# i + 1 till n
+def get_cosine_similarities_i(i, input, n, representation_vector_length):
+    cosine_similarity = torch.nn.CosineSimilarity(dim=1)
+    return cosine_similarity(Variable(torch.ones([n - i - 1, representation_vector_length]).cuda()) *
+                             input[i].cuda(),
+                             input[i + 1:].cuda())
+
+
 def create_a_batch_of_pairs(representations, labels):
     labels = Variable(labels.cuda())
     n = representations.data.shape[0]
@@ -18,7 +28,7 @@ def create_a_batch_of_pairs(representations, labels):
         second_elements_of_pairs = representations[i + 1:].cuda()
 
         pairs_with_i = torch.cat((first_elements_of_pairs, second_elements_of_pairs), dim=1)
-        #print('i for batch of pairs = ', i)
+        # print('i for batch of pairs = ', i)
         batch_of_pairs = torch.cat((batch_of_pairs, pairs_with_i), dim=0)
 
         distances_for_pairs = torch.cat((distances_for_pairs,
@@ -60,7 +70,7 @@ def create_a_batch_of_pairs_i(representations, i):
     second_elements_of_pairs = representations.cuda()
 
     pairs_with_i = torch.cat((first_elements_of_pairs, second_elements_of_pairs), dim=1)
-    #print('i for batch of pairs = ', i)
+    # print('i for batch of pairs = ', i)
 
     return pairs_with_i
 

@@ -10,16 +10,13 @@ import gc
 def test_for_classification(test_loader, network):
     correct = 0
     total = 0
-    print('test_loader ', test_loader)
     for data in test_loader:
         images, labels = data
-        # print('labels ', labels)
 
         outputs = network(Variable(images).cuda())
         _, predicted = torch.max(outputs.data, 1)
         total += labels.size(0)
         correct += (predicted.cpu() == labels).sum()
-        # print('total = ', total)
     accuracy = (100 * correct / total)
 
     print('Accuracy of the network on the ', total, ' images: %d %%' % accuracy)
@@ -58,8 +55,6 @@ def fill_the_distances_matrix(distances_for_pairs, n):
         distances_matrix[i, i + 1:] = distances_matrix[i + 1:, i]
         distances_matrix[i, i] = np.inf
         start = start + n - i - 1
-    # print('distances_matrix ')
-    # print(distances_matrix)
     return distances_matrix
 
 

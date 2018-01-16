@@ -16,12 +16,14 @@ import cProfile
 import pstats
 import io
 import cifar
+import gc
 
 
 def learning_process(train_loader,
                      network,
                      criterion,
                      test_loader,
+                     all_outputs_test, all_labels_test,
                      mode,
                      optimizer=None,
                      start_epoch=0,
@@ -86,8 +88,6 @@ def learning_process(train_loader,
                 print('[ephoch %d, itteration in the epoch %5d] loss: %.30f' %
                       (epoch + 1, i + 1, current_batch_loss))
 
-                print('conv1 = ', network.conv1.weight[0][0])
-
                 r_loss.append(current_batch_loss)
                 iterations.append(total_iteration + i)
 
@@ -96,20 +96,20 @@ def learning_process(train_loader,
                                      # , update='append',
                                      win=loss_plot, opts=options)
 
-                # print the train accuracy at every epoch
-                # to see if it is enough to start representation training
-                # or we should proceed with classification
-                if mode == params.mode_classification:
-                    accuracy = test.test_for_classification(test_loader=test_loader,
-                                                            network=network)
-                if mode == params.mode_representation:
-                    all_outputs_test, all_labels_test = metric_learning_utils.get_all_outputs_and_labels(test_loader,
-                                                                                                         network)
-                    recall_at_k = test.full_test_for_representation(k=params.k_for_recall,
-                                                                    all_outputs=all_outputs_test,
-                                                                    all_labels=all_labels_test)
-
         if epoch % 10 == 0:
+            # print the train accuracy at every epoch
+            # to see if it is enough to start representation training
+            # or we should proceed with classification
+            if mode == params.mode_classification:
+                accuracy = test.test_for_classification(test_loader=test_loader,
+                                                        network=network)
+            if mode == params.mode_representation:
+                # we should recalculate all outputs before the evaluation because our network changed during the trainig
+                all_outputs_test, all_labels_test = metric_learning_utils.get_all_outputs_and_labels(test_loader,
+                                                                                                     network)
+                recall_at_k = test.full_test_for_representation(k=params.k_for_recall,
+                                                                all_outputs=all_outputs_test,
+                                                                all_labels=all_labels_test)
             utils.save_checkpoint(network=network,
                                   optimizer=optimizer,
                                   filename=name_prefix_for_saved_model + '-%d' % epoch,

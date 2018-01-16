@@ -41,8 +41,8 @@ def debug_images_show(train_loader_for_classification):
 def classification_pretrainig(network, train_loader_for_classification, test_loader_for_classification):
     restore_epoch = params.default_recovery_epoch_for_classification
     optimizer = optim.SGD(network.parameters(),
-                          lr=params.learning_rate,
-                          momentum=params.momentum)
+                          lr=params.learning_rate_for_classification,
+                          momentum=params.momentum_for_classification)
     ##################################################################
     #
     # Optional recovering from the saved file
@@ -77,6 +77,7 @@ def classification_pretrainig(network, train_loader_for_classification, test_loa
                                   network=network,
                                   criterion=nn.CrossEntropyLoss(),
                                   test_loader=test_loader_for_classification,
+                                  all_outputs_test=None, all_labels_test=None,
                                   mode=params.mode_classification,
                                   optimizer=optimizer,
                                   start_epoch=start_epoch,
@@ -91,8 +92,9 @@ def representations_learning(network, train_loader, test_loader):
     ##################################################################
     if params.recover_classification_net_before_representation:
         print('Restoring before representational training')
+        restore_epoch = params.default_recovery_epoch_for_classification
         network = utils.load_network_from_checkpoint(network=network,
-                                                     epoch=params.default_recovery_epoch_for_classification,
+                                                     epoch=restore_epoch,
                                                      name_prefix_for_saved_model=
                                                      params.name_prefix_for_saved_model_for_classification)
 
@@ -105,7 +107,7 @@ def representations_learning(network, train_loader, test_loader):
     print('Representational training')
 
     optimizer_for_representational_learning = optim.Adam(network.parameters(),
-                                                         lr=params.learning_rate)  # ,
+                                                         lr=params.learning_rate_for_representation)  # ,
     # momentum=params.momentum)
 
     if params.recover_representation_learning:
@@ -116,10 +118,13 @@ def representations_learning(network, train_loader, test_loader):
             optimizer=optimizer_for_representational_learning,
             epoch=restore_epoch,
             name_prefix_for_saved_model=params.name_prefix_for_saved_model_for_representation)
+        start_epoch = restore_epoch
+    else:
+        start_epoch = 0
 
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_for_representational_learning,
-                                           step_size=params.learning_rate_decay_epoch,
-                                           gamma=params.learning_rate_decay_coefficient)
+                                           step_size=params.learning_rate_decay_epoch_for_representation,
+                                           gamma=params.learning_rate_decay_coefficient_for_representation)
 
     if params.learn_representation:
         learning.learning_process(train_loader=train_loader,
@@ -128,13 +133,17 @@ def representations_learning(network, train_loader, test_loader):
                                   # criterion=histogramm_loss.HistogramLoss(150),
                                   # criterion=nn.CrossEntropyLoss(),
                                   test_loader=test_loader,
+                                  all_outputs_test=None,
+                                  all_labels_test=None,
                                   mode=params.mode_representation,
                                   optimizer=optimizer_for_representational_learning,
-                                  lr_scheduler=exp_lr_scheduler)
+                                  lr_scheduler=exp_lr_scheduler,
+                                  start_epoch=start_epoch)
 
         print("Evaluation: ")
+        all_outputs_test, all_labels_test = metric_learning_utils.get_all_outputs_and_labels(test_loader,
+                                                                                             network)
         all_outputs_train, all_labels_train = metric_learning_utils.get_all_outputs_and_labels(train_loader, network)
-        all_outputs_test, all_labels_test = metric_learning_utils.get_all_outputs_and_labels(test_loader, network)
 
         print("Evaluation on train")
         test.full_test_for_representation(k=params.k_for_recall,
@@ -163,11 +172,11 @@ def visual_similarity_learning(network, train_loader, test_loader):
         number_of_input_features=representation_length * 2).cuda()
 
     optimizer_for_similarity_learning = optim.SGD(similarity_learning_network.parameters(),
-                                                  lr=params.learning_rate,
-                                                  momentum=params.momentum)
+                                                  lr=params.learning_rate_for_similarity,
+                                                  momentum=params.momentum_for_similarity)
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_for_similarity_learning,
                                            step_size=params.learning_rate_decay_epoch,
-                                           gamma=params.learning_rate_decay_coefficient)
+                                           gamma=params.learning_rate_decay_coefficient_for_similarity)
 
     all_outputs_test, all_labels_test = \
         metric_learning_utils.get_all_outputs_and_labels(test_loader, representation_network)
@@ -244,8 +253,8 @@ def main():
     s = io.StringIO()
     sortby = 'cumulative'
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    # ps.print_stats()
-    # print(s.getvalue())
+    ps.print_stats()
+    print(s.getvalue())
 
 
 if __name__ == '__main__':
