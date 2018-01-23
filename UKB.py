@@ -2,20 +2,13 @@ import torchvision.transforms as transforms
 import params
 import torch.utils.data as data
 from torch.utils.data.sampler import BatchSampler
-import torchvision.datasets as datasets
 import numpy as np
-from sklearn import model_selection
 from sampling import UniformSampler
 from torch.utils.data import Dataset, TensorDataset
-import torch
 from PIL import Image
 
 
 def get_filenames_and_labels(data_folder, test_or_train='test'):
-    f_i = open(data_folder + '/CUB_200_2011/images.txt', "r")
-    f_l = open(data_folder + '/CUB_200_2011/image_class_labels.txt', "r")
-    lines_i = f_i.readlines()
-    lines_l = f_l.readlines()
     images_paths = []
     images_indices = []
     images_labels = []
@@ -24,31 +17,30 @@ def get_filenames_and_labels(data_folder, test_or_train='test'):
     train_images = []
     test_images = []
 
-    for x in lines_l:
-        label = int(x.split(' ')[1])
-        images_labels.append(label)
-        if test_or_train == 'train' and label <= 100:
-            train_labels.append(label)
-        if test_or_train == 'test' and label > 100:
-            test_labels.append(label)
+    if test_or_train == 'train':
+        for i in range(1275):
+            for j in range(4):
+                path = data_folder + ('/ukbench%05d.jpg' % (i * 4 + j))
+                images_paths.append(path)
+                images_indices.append(i)
+                train_images.append(path)
+                train_labels.append(i)
+        images_labels = train_labels
+
+    if test_or_train == 'test':
+        for i in range(1275, 2550):
+            for j in range(4):
+                path = data_folder + ('/ukbench%05d.jpg' % (i * 4 + j))
+                images_paths.append(path)
+                images_indices.append(i + 1275)
+                test_images.append(path)
+                test_labels.append(i)
+        images_labels = test_labels
+
     images_labels = np.array(images_labels)
-
+    train_labels = np.array(train_labels)
+    test_labels = np.array(test_labels)
     print('images_labels.shape ', images_labels.shape)
-    for x in lines_i:
-        path = data_folder + '/CUB_200_2011/images/' + test_or_train + '100/' + (x.split(' ')[1]).strip()
-        index = int(x.split(' ')[0]) - 1
-
-        if test_or_train == 'train' and images_labels[index] <= 100 and index <= 5863:
-            images_paths.append(path)
-            images_indices.append(index)
-            train_images.append(path)
-        if test_or_train == 'test' and images_labels[index] > 100 and index > 5836:
-            images_paths.append(path)
-            images_indices.append(index)
-            test_images.append(path)
-
-    f_i.close()
-    f_l.close()
 
     images_indices = np.array(images_indices)
     train_images = np.array(train_images)
@@ -57,7 +49,7 @@ def get_filenames_and_labels(data_folder, test_or_train='test'):
     return images_indices, images_labels, images_paths, train_images, train_labels, test_images, test_labels
 
 
-class BIRDS100(Dataset):
+class UKB(Dataset):
     def __init__(self, data_folder, transform=None, test_or_train='test'):
         self.data_folder = data_folder
         self.transform = transform
@@ -127,11 +119,11 @@ def create_transformations_for_test_and_train():
 def create_new_train_and_test_datasets(transform_train, transform_test, data_folder):
     # create new dataset for representational learning
     # where in train we have first 100 classes and in test the remaining 100
-    new_train_dataset = BIRDS100(data_folder=data_folder,
+    new_train_dataset = UKB(data_folder=data_folder,
                                  transform=transform_train,
                                  test_or_train='train'
                                  )
-    new_test_dataset = BIRDS100(data_folder=data_folder,
+    new_test_dataset = UKB(data_folder=data_folder,
                                 transform=transform_test,
                                 test_or_train='test'
                                 )
@@ -143,34 +135,7 @@ def create_new_train_and_test_datasets(transform_train, transform_test, data_fol
 
     return new_test_dataset, new_train_dataset
 
-
-def download_BIRDS_for_classification(data_folder):
-    transform_test, transform_train = create_transformations_for_test_and_train()
-
-    test_dataset_for_classification, train_dataset_for_classification = create_new_train_and_test_datasets(
-        transform_train,
-        transform_test,
-        data_folder)
-
-    train_loader_for_classification = data.DataLoader(train_dataset_for_classification,
-                                                      batch_size=params.batch_size_for_classification,
-                                                      shuffle=True,
-                                                      num_workers=2)
-    test_loader_for_classification = data.DataLoader(train_dataset_for_classification,  # here for preclassification
-                                                     # we just take train and test sets the same
-                                                     # containing first 100 classes
-                                                     batch_size=params.batch_size_for_classification,
-                                                     shuffle=False,
-
-                                                     num_workers=2)
-
-    print('new_train_dataset_for_classification ', train_dataset_for_classification.__len__())
-    print('new_test_dataset_for_classification', test_dataset_for_classification.__len__())
-
-    return train_loader_for_classification, test_loader_for_classification
-
-
-def download_BIRDS_for_representation(data_folder):
+def download_UKB_for_representation(data_folder):
     transform_train, transform_test = create_transformations_for_test_and_train()
     new_test_dataset, new_train_dataset = create_new_train_and_test_datasets(transform_train, transform_test,
                                                                              data_folder)
@@ -204,5 +169,8 @@ def download_BIRDS_for_representation(data_folder):
 
     print('new_train_dataset ', new_train_dataset.__len__())
     print('new_test_dataset ', new_test_dataset.__len__())
+    print('new_train_dataset.images_paths', new_train_dataset.images_paths)
+    print('new_train_dataset.images_labels', new_train_dataset.images_labels)
+    print('ful batch size = ', len(new_train_dataset.test_labels))
 
     return train_loader, test_loader

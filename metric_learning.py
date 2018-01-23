@@ -19,12 +19,13 @@ import pstats
 import io
 
 
-def metric_learning(train_loader,
+def metric_learning(all_outputs_train, all_labels_train,
                     representation_network, similarity_network,
                     start_epoch,
                     optimizer,
                     lr_scheduler,
-                    criterion, stage, all_outputs_test, all_labels_test):
+                    criterion, stage,
+                    all_outputs_test, all_labels_test):
     vis = visdom.Visdom()
     r_loss = []
     iterations = []
@@ -48,20 +49,17 @@ def metric_learning(train_loader,
         #    train_loader, test_loader, \
         #    train_loader_for_classification, test_loader_for_classification = cifar.download_CIFAR100()
 
-        for i, data in enumerate(train_loader, 0):
-            # print('i = ', i)
-            # get the inputs
-            # inputs are [torch.FloatTensor of size 4x3x32x32]
-            # labels are [torch.LongTensor of size 4]
-            # here 4 is a batch size and 3 is a number of channels in the input images
-            # 32x32 is a size of input image
-            initial_images, labels = data
+        number_of_batches = all_outputs_train.shape[0] // params.batch_size_for_similarity
+        print('number_of_batches = ', number_of_batches)
+        for i in range(number_of_batches):
+            representation_outputs = all_outputs_train[
+                                     i * params.batch_size_for_similarity: (i + 1) * params.batch_size_for_similarity]
+            labels = all_labels_train[i * params.batch_size_for_similarity: (i + 1) * params.batch_size_for_similarity]
 
-            # here we take representations andd create a batch of pairs
-            representation_outputs = representation_network(Variable(initial_images).cuda())
             representation_pairs, \
             distances_for_pairs, \
-            signs_for_pairs = create_a_batch_of_pairs(representation_outputs, labels)
+            signs_for_pairs, \
+            cosine_similarities = create_a_batch_of_pairs(representation_outputs, labels)
 
             # zero the parameter gradients
             optimizer.zero_grad()
@@ -77,12 +75,15 @@ def metric_learning(train_loader,
             # During the first stage we just try to learn distances themselves
             if stage == 1:
                 loss = criterion(similarity_outputs, distances_for_pairs)
+                # loss = criterion(similarity_outputs, cosine_similarities)
             # During the second stage we introduce a margin delta
             # and we add delta to the distance for positive pairs (with the same labels)
             # and subtract the delta from the distance for negative pairs (with the different labels)
             if stage == 2:
-                pair_distances_with_deltas = distances_for_pairs + params.delta_for_similarity * signs_for_pairs
-                loss = criterion(similarity_outputs, pair_distances_with_deltas)
+                # pair_distances_with_deltas = distances_for_pairs + params.delta_for_similarity * signs_for_pairs
+                # loss = criterion(similarity_outputs, pair_distances_with_deltas)
+                cosine_similarities_with_deltas = cosine_similarities + params.delta_for_similarity * signs_for_pairs
+                loss = criterion(similarity_outputs, cosine_similarities_with_deltas)
             # todo add hard examples for stage 3
 
             loss.backward()
@@ -93,6 +94,7 @@ def metric_learning(train_loader,
             if i % params.skip_step == 0:  # print every 2000 mini-batches
                 print('[ephoch %d, itteration in the epoch %5d] loss: %.30f' %
                       (epoch + 1, i + 1, current_batch_loss))
+                print('conv1 = ', similarity_network.fc1.weight[0][0])
 
                 r_loss.append(current_batch_loss)
                 iterations.append(total_iteration + i)
@@ -107,9 +109,16 @@ def metric_learning(train_loader,
             # Here evaluation is heavy so we do it only every 10 epochs
             print('similarity_network ', similarity_network)
 
+
+            print('Evaluation on train\n')
             recall_at_k = test.full_test_for_representation(k=params.k_for_recall,
-                                                            all_outputs=all_outputs_test, all_labels=all_labels_test,
+                                                            all_outputs=all_outputs_train, all_labels=all_labels_train,
                                                             similarity_network=similarity_network)
+            print('Evaluation on test\n')
+            # todo return this evaluation after speed up the calculations
+            #recall_at_k = test.full_test_for_representation(k=params.k_for_recall,
+            #                                                all_outputs=all_outputs_test, all_labels=all_labels_test,
+            #                                                similarity_network=similarity_network)
 
             utils.save_checkpoint(network=similarity_network,
                                   optimizer=optimizer,
@@ -154,6 +163,7 @@ def test_of_generating_batch_of_pairs():
         representation_outputs = network(Variable(initial_images).cuda())
         representation_pairs, \
         distances_for_pairs, \
-        signs_for_pairs = create_a_batch_of_pairs(representation_outputs, labels)
+        signs_for_pairs, \
+        cosine_similarities = create_a_batch_of_pairs(representation_outputs, labels)
 
 # test_of_generating_batch_of_pairs()

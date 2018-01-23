@@ -1,3 +1,4 @@
+import math
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -40,6 +41,11 @@ class SimilarityNetwork(nn.Module):
 
         self.fc3 = nn.Linear(self.number_of_hidden_neurons_for_2_fully_connected,
                              self.number_of_output_neurons)
+
+        ##################################################################
+        # Weights initialization
+        ##################################################################
+
 
     def forward(self, x):
         x = F.relu(self.fc1(x))

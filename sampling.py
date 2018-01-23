@@ -2,7 +2,6 @@ from torch.utils.data.sampler import Sampler
 import torch
 import numpy as np
 from torch.utils.data import TensorDataset
-import cifar
 import torchvision.datasets as datasets
 import params
 import torch.utils.data as data
@@ -154,7 +153,7 @@ class UniformSampler(Sampler):
         indices_to_take = np.empty(0, dtype=int)
         remaining = train_labels
         number_of_batches = 0
-        while number_of_batches <= len(train_labels)// self.batch_size: #len(remaining) > self.batch_size:
+        while number_of_batches < len(train_labels)// self.batch_size: #len(remaining) > self.batch_size:
             new_batch, remaining = self.get_indices_for_new_batch(remaining)
             # add new indices to all
             indices_to_take = np.hstack(

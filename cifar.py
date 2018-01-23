@@ -5,7 +5,7 @@ from torch.utils.data.sampler import BatchSampler
 import torchvision.datasets as datasets
 import numpy as np
 from sklearn import model_selection
-from sampling import PercentageSampler, UniformSampler
+from sampling import UniformSampler
 
 
 # I use this class to create a dataset which consist of CIFAR100 splited on train and test such that

@@ -35,5 +35,5 @@ def load_network_from_checkpoint(network, epoch, name_prefix_for_saved_model):
     print("=> loading checkpoint '{}'")
     checkpoint = torch.load(name_prefix_for_saved_model + '-%d' % epoch)
     network.load_state_dict(checkpoint['state_dict'])
-    print("=> loaded checkpoint '{}' (epoch {})")
+    print("=> loaded checkpoint '{}' (epoch {%d})" % epoch)
     return network

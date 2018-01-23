@@ -1,6 +1,7 @@
 import cifar
 import learning
 import metric_learning_utils
+import spoc
 import test
 import params
 import torchvision
@@ -129,8 +130,8 @@ def representations_learning(network, train_loader, test_loader):
     if params.learn_representation:
         learning.learning_process(train_loader=train_loader,
                                   network=network,
-                                  criterion=loss.MarginLoss(),
-                                  # criterion=histogramm_loss.HistogramLoss(150),
+                                  #criterion=loss.MarginLoss(),
+                                  criterion=histogramm_loss.HistogramLoss(150),
                                   # criterion=nn.CrossEntropyLoss(),
                                   test_loader=test_loader,
                                   all_outputs_test=None,
@@ -161,12 +162,26 @@ def visual_similarity_learning(network, train_loader, test_loader):
     ##################################################################
 
     print('Restoring representation network before similarity training')
-    representation_network = utils.load_network_from_checkpoint(network=network,
-                                                                epoch=params.default_recovery_epoch_for_representation,
-                                                                name_prefix_for_saved_model=
-                                                                params.name_prefix_for_saved_model_for_representation)
+    if params.recover_representation_net_before_similarity:
+        representation_network = utils.load_network_from_checkpoint(network=network,
+                                                                    epoch=params.default_recovery_epoch_for_representation,
+                                                                    name_prefix_for_saved_model=
+                                                                    params.name_prefix_for_saved_model_for_representation)
+        representation_length = next(representation_network.fc.modules()).fc.out_features
+        print('representation_length = ', representation_length)
+        all_outputs_train, all_labels_train = \
+            metric_learning_utils.get_all_outputs_and_labels(train_loader, representation_network)
+        print('all_outputs_train ', all_outputs_train)
+        all_outputs_test, all_labels_test = \
+            metric_learning_utils.get_all_outputs_and_labels(test_loader, representation_network)
+    else:
+        representation_network = None
+        representation_length = 256
+        all_outputs_train, all_labels_train = spoc.read_spocs_and_labels('all_spocs_file_train_after_pca', 'all_labels_file_train')
+        all_outputs_test, all_labels_test = spoc.read_spocs_and_labels('all_spocs_file_test_after_pca', 'all_labels_file_test')
 
-    representation_length = next(representation_network.fc.modules()).fc.out_features
+
+    # print('representation_network = ', representation_network)
     print('representation_length = ', representation_length)
     similarity_learning_network = similarity_network.SimilarityNetwork(
         number_of_input_features=representation_length * 2).cuda()
@@ -178,16 +193,37 @@ def visual_similarity_learning(network, train_loader, test_loader):
                                            step_size=params.learning_rate_decay_epoch,
                                            gamma=params.learning_rate_decay_coefficient_for_similarity)
 
-    all_outputs_test, all_labels_test = \
-        metric_learning_utils.get_all_outputs_and_labels(test_loader, representation_network)
-    metric_learning.metric_learning(train_loader,
+
+    if params.learn_stage_1:
+        # *********
+        # Stage 1
+        # *********
+        metric_learning.metric_learning(all_outputs_train, all_labels_train,
+                                        representation_network,
+                                        similarity_network=similarity_learning_network,
+                                        start_epoch=0,
+                                        optimizer=optimizer_for_similarity_learning,
+                                        lr_scheduler=exp_lr_scheduler,
+                                        criterion=nn.L1Loss(),
+                                        stage=1,
+                                        all_outputs_test=all_outputs_test, all_labels_test=all_labels_test)
+    print('Recover similarity network before the 2 stage')
+    similarity_learning_network = utils.load_network_from_checkpoint(network=similarity_learning_network,
+                                                                     epoch=params.default_recovery_epoch_for_similarity,
+                                                                     name_prefix_for_saved_model=
+                                                                     params.name_prefix_for_similarity_saved_model)
+
+    # *********
+    # Stage 2
+    # *********
+    metric_learning.metric_learning(all_outputs_train, all_labels_train,
                                     representation_network,
                                     similarity_network=similarity_learning_network,
                                     start_epoch=0,
                                     optimizer=optimizer_for_similarity_learning,
                                     lr_scheduler=exp_lr_scheduler,
                                     criterion=nn.L1Loss(),
-                                    stage=1,
+                                    stage=2,
                                     all_outputs_test=all_outputs_test, all_labels_test=all_labels_test)
 
 

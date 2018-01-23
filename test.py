@@ -34,7 +34,7 @@ def get_total_fraction_of_correct_labels_and_total_number_of_batches(labels, nei
     total_fraction_of_correct_labels_in_the_batch = 0
     for i in range(number_of_outputs):
         actual_label = labels[i]
-
+        #print('actual_label ', actual_label, 'neighbors_lists[i] ', neighbors_lists[i])
         fraction_of_correct_labels_among_the_k_nearest_neighbors = \
             fraction_of_correct_labels_in_array(actual_label, neighbors_lists[i], labels)
 
@@ -59,14 +59,15 @@ def fill_the_distances_matrix(distances_for_pairs, n):
 
 
 def add_distances_matrix_i(distances_matrix_i, distances_matrix, i):
-    distances_matrix[i] = distances_matrix_i
-    distances_matrix[:, i] = distances_matrix_i
+    distances_matrix[i] = distances_matrix_i.data
+    distances_matrix[:, i] = distances_matrix_i.data
     return distances_matrix
 
 
 def fill_the_distances_matrix_i(distances_for_pairs, i):
-    distances_matrix_i = distances_for_pairs.data.cpu().numpy()
-    distances_matrix_i[i] = np.inf
+    distances_matrix_i = distances_for_pairs#.data.cpu().numpy()
+    distances_matrix_i[i] = np.inf # if we use distances it should be inf, if we use cosine similarities it should be zero
+    #distances_matrix_i[i] = 0.0
     return distances_matrix_i
 
 
@@ -74,42 +75,56 @@ def get_neighbors_lists_from_distances_matrix(distances_matrix, k):
     n = distances_matrix.shape[0]
     neighbors_lists = []
     for i in range(n):
-        neighbors_for_i = np.argsort(distances_matrix[i])[:k]
-        # print('i = ', i, ' neighbors_for_i = ', neighbors_for_i)
+        neighbors_for_i = np.argsort(distances_matrix[i].cpu().numpy())[:k] # this is for distances
+        # print('i = ', i, ' neighbors_for_i (for distances) = ', neighbors_for_i)
+        #neighbors_for_i = np.argsort(distances_matrix[i])[::-1][:k]  # this is for cosine similarities
+
+        #print('i = ', i, ' neighbors_for_i = ', neighbors_for_i)
         neighbors_lists.append(neighbors_for_i)
-    # print('neighbors_lists ', neighbors_lists)
+    print('neighbors_lists ', neighbors_lists)
     return neighbors_lists
 
 
 def get_neighbors_lists(k, labels, number_of_outputs, outputs, similarity_network):
     if similarity_network is None:
+        outputs = outputs.data.cpu().numpy()
+        gc.collect()
         ##########################
-        # For representation test we simply compute the distances whilie nearest neighbors search
+        # For representation test we simply compute the distances while nearest neighbors search
         ##########################
         neigh = NearestNeighbors(n_neighbors=k)
-        neigh.fit(outputs.data.cpu().numpy())
+        neigh.fit(outputs)
         # these are the lists of indices (inside the current batch) of the k nearest neighbors,
         # not the neighbors vectors themselves
-        neighbors_lists = neigh.kneighbors(outputs.data.cpu().numpy(), return_distance=False)
+        neighbors_lists = neigh.kneighbors(outputs, return_distance=False)
     else:
         ##########################
         # If we have learned visual similarity distances we should find nearest neighbors in another way
         ##########################
-        distances_matrix = np.zeros((number_of_outputs, number_of_outputs))
+        distances_matrix = torch.zeros(number_of_outputs, number_of_outputs)
+        print('distances_matrix ', distances_matrix)
         for i in range(number_of_outputs):
+            #print('i = ', i)
+            #print(datetime.datetime.now())
             representation_pairs_i = metric_learning_utils.create_a_batch_of_pairs_i(outputs, i)
+            #print(datetime.datetime.now())
+            #print('representation_pairs_i = ', representation_pairs_i)
 
             # distances_for_pairs - real distances between the representation vectors
             # distances_for_pairs_from_similarity_network - learned visual similarity distances
             number_of_pairs = representation_pairs_i.data.shape[0]
-            #print('number_of_pairs ', number_of_pairs)
+            #print('number_of_pairs ', number_of_pairs, ' i =', i)
             distances_for_pairs_from_similarity_network_i = similarity_network(representation_pairs_i).view(number_of_pairs)
-
-            distances_matrix_i = fill_the_distances_matrix_i(distances_for_pairs_from_similarity_network_i, i)
+            #print(datetime.datetime.now())
+            #print('i = ', i, ' distances_for_pairs_from_similarity_network_i ', distances_for_pairs_from_similarity_network_i)
+            distances_matrix_i = fill_the_distances_matrix_i(distances_for_pairs_from_similarity_network_i, i) # the longest operation
+            #print(datetime.datetime.now())
             distances_matrix = add_distances_matrix_i(distances_matrix_i, distances_matrix, i)
-
+            #print(datetime.datetime.now())
+        print('distances_matrix ', distances_matrix)
         neighbors_lists = get_neighbors_lists_from_distances_matrix(distances_matrix, k)
         gc.collect()
+    print('neighbors_lists = ', neighbors_lists)
     return neighbors_lists
 
 

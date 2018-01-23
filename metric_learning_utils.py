@@ -16,11 +16,16 @@ def get_cosine_similarities_i(i, input, n, representation_vector_length):
 
 
 def create_a_batch_of_pairs(representations, labels):
+    n = representations.shape[0]
+    representation_vector_length = representations[0].shape[0]
+
     labels = Variable(labels.cuda())
-    n = representations.data.shape[0]
-    representation_vector_length = representations[0].data.shape[0]
+    representations = Variable(representations.cuda())
+
     batch_of_pairs = torch.cat((representations[n - 2].cuda(), representations[n - 1].cuda()), dim=0).view(1, -1)
     distances_for_pairs = loss.MarginLoss.get_distances_i(n - 2, representations, n, representation_vector_length)
+    cosine_similarities = get_cosine_similarities_i(n - 2, representations, n, representation_vector_length)
+
     signs_for_pairs = loss.MarginLoss.get_signs_i(n - 2, labels, n)
     for i in range(n - 2):
         first_elements_of_pairs = Variable(torch.ones([n - i - 1, representation_vector_length]).cuda()) * \
@@ -34,6 +39,8 @@ def create_a_batch_of_pairs(representations, labels):
         distances_for_pairs = torch.cat((distances_for_pairs,
                                          loss.MarginLoss.get_distances_i(i, representations, n,
                                                                          representation_vector_length)), dim=0)
+        cosine_similarities = torch.cat((cosine_similarities, get_cosine_similarities_i(i, representations, n,
+                                                                         representation_vector_length)), dim=0)
         signs_for_pairs = torch.cat((signs_for_pairs, loss.MarginLoss.get_signs_i(i, labels, n)), dim=0)
 
     # We initialized ours batch_of_pairs, distances_for_pairs and signs_for_pairs with the pair (n - 2, n - 1)
@@ -46,6 +53,7 @@ def create_a_batch_of_pairs(representations, labels):
 
     batch_of_pairs = Variable(torch.index_select(batch_of_pairs.data, dim=0, index=indices))
     distances_for_pairs = Variable(torch.index_select(distances_for_pairs.data, dim=0, index=indices))
+    cosine_similarities = Variable(torch.index_select(cosine_similarities.data, dim=0, index=indices))
     signs_for_pairs = Variable(torch.index_select(signs_for_pairs.data, dim=0, index=indices))
 
     # Finally we have the following pairs order
@@ -59,7 +67,7 @@ def create_a_batch_of_pairs(representations, labels):
     distances_for_pairs = distances_for_pairs.view(distances_for_pairs.data.shape[0])
     signs_for_pairs = signs_for_pairs.view(signs_for_pairs.data.shape[0])
 
-    return batch_of_pairs, distances_for_pairs, signs_for_pairs
+    return batch_of_pairs, distances_for_pairs, signs_for_pairs, cosine_similarities
 
 
 def create_a_batch_of_pairs_i(representations, i):
