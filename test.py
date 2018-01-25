@@ -6,6 +6,8 @@ import numpy as np
 import metric_learning_utils
 import gc
 
+import params
+
 
 def test_for_classification(test_loader, network):
     correct = 0
@@ -47,6 +49,19 @@ def get_total_fraction_of_correct_labels_and_total_number_of_batches(labels, nei
     return total_fraction_of_correct_labels, total_number_of_batches
 
 
+# just to check what if we send distances instead of the similarity network
+def get_distances_for_pairs_for_representation_pairs_i(representation_pairs_i):
+    # print('representation_pairs_i ', representation_pairs_i)
+    first = representation_pairs_i[:, :256]
+    second = representation_pairs_i[:, 256:]
+    # print('first ', first)
+    # print('second ', second)
+    dist = torch.nn.PairwiseDistance()
+    result = dist(first, second)
+    # print('dist', result)
+    return result
+
+
 def fill_the_distances_matrix(distances_for_pairs, n):
     distances_matrix = np.zeros((n, n))
     start = 0
@@ -55,6 +70,19 @@ def fill_the_distances_matrix(distances_for_pairs, n):
         distances_matrix[i, i + 1:] = distances_matrix[i + 1:, i]
         distances_matrix[i, i] = np.inf
         start = start + n - i - 1
+    distances_matrix[n - 1, n - 1] = np.inf
+    return distances_matrix
+
+
+def set_zeros_on_diag(distances_matrix):
+    for i in range(distances_matrix.shape[0]):
+        distances_matrix[i, i] = 0.0
+    return distances_matrix
+
+
+def fill_the_distances_matrix_for_training(distances_for_pairs, n):
+    distances_matrix = fill_the_distances_matrix(distances_for_pairs, n)
+    distances_matrix = set_zeros_on_diag(distances_matrix)
     return distances_matrix
 
 
@@ -65,9 +93,10 @@ def add_distances_matrix_i(distances_matrix_i, distances_matrix, i):
 
 
 def fill_the_distances_matrix_i(distances_for_pairs, i):
-    distances_matrix_i = distances_for_pairs#.data.cpu().numpy()
-    distances_matrix_i[i] = np.inf # if we use distances it should be inf, if we use cosine similarities it should be zero
-    #distances_matrix_i[i] = 0.0
+    distances_matrix_i = distances_for_pairs  # .data.cpu().numpy()
+    distances_matrix_i[
+        i] = np.inf  # if we use distances it should be inf, if we use cosine similarities it should be zero
+    # distances_matrix_i[i] = 0.0
     return distances_matrix_i
 
 
@@ -75,13 +104,13 @@ def get_neighbors_lists_from_distances_matrix(distances_matrix, k):
     n = distances_matrix.shape[0]
     neighbors_lists = []
     for i in range(n):
-        neighbors_for_i = np.argsort(distances_matrix[i].cpu().numpy())[:k] # this is for distances
+        neighbors_for_i = np.argsort(distances_matrix[i].cpu().numpy())[:k]  # this is for distances
         # print('i = ', i, ' neighbors_for_i (for distances) = ', neighbors_for_i)
-        #neighbors_for_i = np.argsort(distances_matrix[i])[::-1][:k]  # this is for cosine similarities
+        # neighbors_for_i = np.argsort(distances_matrix[i])[::-1][:k]  # this is for cosine similarities
 
-        #print('i = ', i, ' neighbors_for_i = ', neighbors_for_i)
+        # print('i = ', i, ' neighbors_for_i = ', neighbors_for_i)
         neighbors_lists.append(neighbors_for_i)
-    print('neighbors_lists ', neighbors_lists)
+    print('neighbors_lists not from sklearn', neighbors_lists)
     return neighbors_lists
 
 
@@ -101,29 +130,39 @@ def get_neighbors_lists(k, labels, number_of_outputs, outputs, similarity_networ
         ##########################
         # If we have learned visual similarity distances we should find nearest neighbors in another way
         ##########################
-        distances_matrix = torch.zeros(number_of_outputs, number_of_outputs)
-        print('distances_matrix ', distances_matrix)
-        for i in range(number_of_outputs):
-            #print('i = ', i)
-            #print(datetime.datetime.now())
-            representation_pairs_i = metric_learning_utils.create_a_batch_of_pairs_i(outputs, i)
-            #print(datetime.datetime.now())
-            #print('representation_pairs_i = ', representation_pairs_i)
 
-            # distances_for_pairs - real distances between the representation vectors
-            # distances_for_pairs_from_similarity_network - learned visual similarity distances
-            number_of_pairs = representation_pairs_i.data.shape[0]
-            #print('number_of_pairs ', number_of_pairs, ' i =', i)
-            distances_for_pairs_from_similarity_network_i = similarity_network(representation_pairs_i).view(number_of_pairs)
-            #print(datetime.datetime.now())
-            #print('i = ', i, ' distances_for_pairs_from_similarity_network_i ', distances_for_pairs_from_similarity_network_i)
-            distances_matrix_i = fill_the_distances_matrix_i(distances_for_pairs_from_similarity_network_i, i) # the longest operation
-            #print(datetime.datetime.now())
-            distances_matrix = add_distances_matrix_i(distances_matrix_i, distances_matrix, i)
-            #print(datetime.datetime.now())
+        distances_matrix = similarity_network(outputs).data.view(params.batch_size_for_similarity,
+                                                                 params.batch_size_for_similarity)
+        # distances_matrix = torch.zeros(number_of_outputs, number_of_outputs)
+        # for i in range(number_of_outputs):
+        #    #print('i = ', i)
+        #    # print(datetime.datetime.now())
+        #    representation_pairs_i = metric_learning_utils.create_a_batch_of_pairs_i(outputs, i)
+
+        #    print(datetime.datetime.now())
+        # print('representation_pairs_i = ', representation_pairs_i)
+
+        # distances_for_pairs - real distances between the representation vectors
+        # distances_for_pairs_from_similarity_network - learned visual similarity distances
+        #    number_of_pairs = representation_pairs_i.data.shape[0]
+
+        # distances_for_pairs_from_similarity_network_i = get_distances_for_pairs_for_representation_pairs_i(
+        #    representation_pairs_i)
+
+        #    distances_for_pairs_from_similarity_network_i = similarity_network(representation_pairs_i).view(number_of_pairs)# the second longest
+
+        # print(datetime.datetime.now())
+        # print('i = ', i, ' distances_for_pairs_from_similarity_network_i ', distances_for_pairs_from_similarity_network_i)
+        #    distances_matrix_i = fill_the_distances_matrix_i(distances_for_pairs_from_similarity_network_i, i)
+        # print(datetime.datetime.now())
+        #    distances_matrix = add_distances_matrix_i(distances_matrix_i, distances_matrix, i)  # the longest operation
+        # print(datetime.datetime.now())
+
         print('distances_matrix ', distances_matrix)
         neighbors_lists = get_neighbors_lists_from_distances_matrix(distances_matrix, k)
+
         gc.collect()
+
     print('neighbors_lists = ', neighbors_lists)
     return neighbors_lists
 
@@ -170,6 +209,36 @@ def full_test_for_representation(k, all_outputs, all_labels, similarity_network=
                                                                          number_of_outputs,
                                                                          total_fraction_of_correct_labels,
                                                                          total_number_of_batches)
+
+    recall_at_k = float(total_fraction_of_correct_labels) / float(total_number_of_batches)
+    print('recall_at_', k, ' of the network on the ', total_number_of_batches, ' batches: %f ' % recall_at_k)
+
+    return recall_at_k
+
+
+def partial_test_for_representation(k, all_outputs, all_labels, similarity_network=None):
+    total_fraction_of_correct_labels = 0
+    total_number_of_batches = 0
+
+    number_of_outputs = all_outputs.shape[0]
+
+    number_of_batches = all_outputs.shape[0] // params.batch_size_for_similarity
+    for i in range(number_of_batches):
+        representation_outputs = all_outputs[
+                                 i * params.batch_size_for_similarity: (i + 1) * params.batch_size_for_similarity]
+        labels = all_labels[i * params.batch_size_for_similarity: (i + 1) * params.batch_size_for_similarity]
+
+        neighbors_lists = get_neighbors_lists(k, labels, params.batch_size_for_similarity,
+                                              Variable(representation_outputs), similarity_network)
+
+        # here we add new values for current batch to the given
+        # total_fraction_of_correct_labels and total_number_of_batches
+        total_fraction_of_correct_labels, total_number_of_batches = \
+            get_total_fraction_of_correct_labels_and_total_number_of_batches(labels,
+                                                                             neighbors_lists,
+                                                                             params.batch_size_for_similarity,
+                                                                             total_fraction_of_correct_labels,
+                                                                             total_number_of_batches)
 
     recall_at_k = float(total_fraction_of_correct_labels) / float(total_number_of_batches)
     print('recall_at_', k, ' of the network on the ', total_number_of_batches, ' batches: %f ' % recall_at_k)

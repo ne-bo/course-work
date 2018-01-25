@@ -11,7 +11,7 @@ batch_size_for_representation = 4 # here 27 is maximum if we want
 
 # for equal number of positive and negative examples
 number_of_samples_with_the_same_label_in_the_batch = (batch_size_for_representation + 1)/2
-batch_size_for_similarity = 100
+batch_size_for_similarity = 300
 
 data_folder = "./data"
 num_classes = 200
@@ -38,7 +38,7 @@ learning_rate_decay_epoch_for_representation = 10
 
 learning_rate_decay_coefficient = 0.5
 learning_rate_decay_coefficient_for_representation = 0.5
-learning_rate_decay_coefficient_for_similarity = 0.9
+learning_rate_decay_coefficient_for_similarity = 0.99999
 
 momentum_for_classification = 0.9
 momentum_for_similarity = 0.9

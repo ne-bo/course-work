@@ -20,13 +20,12 @@ class SimilarityNetwork(nn.Module):
         self.number_of_input_features = number_of_input_features
 
         # parameters for first fully connected layer
-        self.number_of_hidden_neurons_for_1_fully_connected = 4096
+        self.number_of_hidden_neurons_for_1_fully_connected = 1024  # 4096
 
         # parameters for second fully connected layer
-        self.number_of_hidden_neurons_for_2_fully_connected = 4096
+        self.number_of_hidden_neurons_for_2_fully_connected = 1024  # 4096
 
         self.number_of_output_neurons = 1
-
 
         ##################################################################
         #
@@ -46,13 +45,11 @@ class SimilarityNetwork(nn.Module):
         # Weights initialization
         ##################################################################
 
-
     def forward(self, x):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
 
-
-#def create_similarity_network(number_of_input_features):
+# def create_similarity_network(number_of_input_features):
 #    return SimilarityNetwork(number_of_input_features)

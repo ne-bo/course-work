@@ -65,7 +65,8 @@ def metric_learning(all_outputs_train, all_labels_train,
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            similarity_outputs = similarity_network(representation_pairs)
+            # this i good for ineffective implementation similarity_outputs = similarity_network(representation_pairs)
+            similarity_outputs = similarity_network(Variable(representation_outputs))
 
             # Learning Non-Metric Visual Similarity for Image Retrieval
             # https://arxiv.org/abs/1709.01353
@@ -74,7 +75,13 @@ def metric_learning(all_outputs_train, all_labels_train,
 
             # During the first stage we just try to learn distances themselves
             if stage == 1:
-                loss = criterion(similarity_outputs, distances_for_pairs)
+                distance_matrix = Variable(torch.from_numpy(test.fill_the_distances_matrix_for_training(distances_for_pairs,
+                                                                                  params.batch_size_for_similarity)).float().cuda())
+                #print('distance_matrix ', distance_matrix)
+                #print('similarity_outputs', similarity_outputs)
+                loss = criterion(similarity_outputs.view(params.batch_size_for_similarity,
+                                                         params.batch_size_for_similarity),
+                                 distance_matrix)
                 # loss = criterion(similarity_outputs, cosine_similarities)
             # During the second stage we introduce a margin delta
             # and we add delta to the distance for positive pairs (with the same labels)
@@ -94,7 +101,7 @@ def metric_learning(all_outputs_train, all_labels_train,
             if i % params.skip_step == 0:  # print every 2000 mini-batches
                 print('[ephoch %d, itteration in the epoch %5d] loss: %.30f' %
                       (epoch + 1, i + 1, current_batch_loss))
-                print('conv1 = ', similarity_network.fc1.weight[0][0])
+                print('fc2.weight = ', similarity_network.fc2.weight[0][0])
 
                 r_loss.append(current_batch_loss)
                 iterations.append(total_iteration + i)
@@ -111,9 +118,12 @@ def metric_learning(all_outputs_train, all_labels_train,
 
 
             print('Evaluation on train\n')
-            recall_at_k = test.full_test_for_representation(k=params.k_for_recall,
+            recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
                                                             all_outputs=all_outputs_train, all_labels=all_labels_train,
                                                             similarity_network=similarity_network)
+
+
+
             print('Evaluation on test\n')
             # todo return this evaluation after speed up the calculations
             #recall_at_k = test.full_test_for_representation(k=params.k_for_recall,

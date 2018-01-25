@@ -1,6 +1,7 @@
 import cifar
 import learning
 import metric_learning_utils
+import similarity_network_effective
 import spoc
 import test
 import params
@@ -183,8 +184,8 @@ def visual_similarity_learning(network, train_loader, test_loader):
 
     # print('representation_network = ', representation_network)
     print('representation_length = ', representation_length)
-    similarity_learning_network = similarity_network.SimilarityNetwork(
-        number_of_input_features=representation_length * 2).cuda()
+    similarity_learning_network = similarity_network_effective.EffectiveSimilarityNetwork(
+        number_of_input_features=representation_length).cuda()
 
     optimizer_for_similarity_learning = optim.SGD(similarity_learning_network.parameters(),
                                                   lr=params.learning_rate_for_similarity,
