@@ -131,7 +131,7 @@ def representations_learning(network, train_loader, test_loader):
     if params.learn_representation:
         learning.learning_process(train_loader=train_loader,
                                   network=network,
-                                  #criterion=loss.MarginLoss(),
+                                  # criterion=loss.MarginLoss(),
                                   criterion=histogramm_loss.HistogramLoss(150),
                                   # criterion=nn.CrossEntropyLoss(),
                                   test_loader=test_loader,
@@ -178,22 +178,22 @@ def visual_similarity_learning(network, train_loader, test_loader):
     else:
         representation_network = None
         representation_length = 256
-        all_outputs_train, all_labels_train = spoc.read_spocs_and_labels('all_spocs_file_train_after_pca', 'all_labels_file_train')
-        all_outputs_test, all_labels_test = spoc.read_spocs_and_labels('all_spocs_file_test_after_pca', 'all_labels_file_test')
-
+        all_outputs_train, all_labels_train = spoc.read_spocs_and_labels('all_spocs_file_train_after_pca',
+                                                                         'all_labels_file_train')
+        all_outputs_test, all_labels_test = spoc.read_spocs_and_labels('all_spocs_file_test_after_pca',
+                                                                       'all_labels_file_test')
 
     # print('representation_network = ', representation_network)
     print('representation_length = ', representation_length)
     similarity_learning_network = similarity_network_effective.EffectiveSimilarityNetwork(
         number_of_input_features=representation_length).cuda()
 
-    optimizer_for_similarity_learning = optim.SGD(similarity_learning_network.parameters(),
-                                                  lr=params.learning_rate_for_similarity,
-                                                  momentum=params.momentum_for_similarity)
+    optimizer_for_similarity_learning = optim.Adam(similarity_learning_network.parameters(),
+                                                   lr=params.learning_rate_for_similarity)
+    # momentum=params.momentum_for_similarity)
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_for_similarity_learning,
                                            step_size=params.learning_rate_decay_epoch,
                                            gamma=params.learning_rate_decay_coefficient_for_similarity)
-
 
     if params.learn_stage_1:
         # *********
@@ -205,7 +205,7 @@ def visual_similarity_learning(network, train_loader, test_loader):
                                         start_epoch=0,
                                         optimizer=optimizer_for_similarity_learning,
                                         lr_scheduler=exp_lr_scheduler,
-                                        criterion=nn.L1Loss(),
+                                        criterion=nn.MSELoss(),
                                         stage=1,
                                         all_outputs_test=all_outputs_test, all_labels_test=all_labels_test)
     print('Recover similarity network before the 2 stage')

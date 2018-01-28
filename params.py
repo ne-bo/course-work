@@ -31,14 +31,14 @@ initial_image_scale_size = 586 # 256 for resnet-50, 586 for VGG
 
 learning_rate_for_classification = 0.01
 learning_rate_for_representation = 0.01
-learning_rate_for_similarity = 0.0001
+learning_rate_for_similarity = 0.1
 
 learning_rate_decay_epoch = 10
 learning_rate_decay_epoch_for_representation = 10
 
 learning_rate_decay_coefficient = 0.5
 learning_rate_decay_coefficient_for_representation = 0.5
-learning_rate_decay_coefficient_for_similarity = 0.99999
+learning_rate_decay_coefficient_for_similarity = 0.3
 
 momentum_for_classification = 0.9
 momentum_for_similarity = 0.9

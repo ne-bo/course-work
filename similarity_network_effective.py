@@ -6,45 +6,27 @@ from torch.nn import Parameter
 
 
 class AllPairs(nn.Module):
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_features, out_features):
         super(AllPairs, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
 
-        self.weight_1 = Parameter(torch.Tensor(out_features, in_features))
-        self.weight_2 = Parameter(torch.Tensor(out_features, in_features))
-        if bias:
-            self.bias_1 = Parameter(torch.Tensor(out_features))
-            self.bias_2 = Parameter(torch.Tensor(out_features))
-        else:
-            self.register_parameter('bias_1', None)
-            self.register_parameter('bias_2', None)
-        self.reset_parameters()
-
-    @staticmethod
-    def reset_weight_and_bias(weight, bias):
-        stdv = 1. / math.sqrt(weight.size(1))
-        weight.data.uniform_(-stdv, stdv)
-        if bias is not None:
-            bias.data.uniform_(-stdv, stdv)
-
-    def reset_parameters(self):
-        self.reset_weight_and_bias(self.weight_1, self.bias_1)
-        self.reset_weight_and_bias(self.weight_2, self.bias_2)
-
     def forward(self, input):
         #print('input', input)
+
         fc1 = nn.Linear(self.in_features, self.out_features).cuda()
         fc2 = nn.Linear(self.in_features, self.out_features).cuda()
-        input_1 = fc1(input)
-        input_2 = fc2(input)
+        # split the input to 2 parts corresponding to 2 different batches
+        batch_size = input.size(0)//2
+        input_1 = fc1(input[:batch_size])
+        input_2 = fc2(input[batch_size:])
 
         #print('input_1 ', input_1)
         #print('input_2 ', input_2)
         input_1 = input_1.expand(input_1.size(0), input_1.size(0), input_1.size(1))
-        #print('input_1 after the expansion ', input_1)
+        # print('input_1 after the expansion ', input_1)
         input_2 = torch.transpose(input_2.expand(input_2.size(0), input_2.size(0), input_2.size(1)), 0, 1)
-        #print('input_2 after the expansion and transposition', input_2)
+        # print('input_2 after the expansion and transposition', input_2)
         return input_1 + input_2
 
     def __repr__(self):
@@ -68,10 +50,10 @@ class EffectiveSimilarityNetwork(nn.Module):
         self.number_of_input_features = number_of_input_features
 
         # parameters for first fully connected layer
-        self.number_of_hidden_neurons_for_1_fully_connected = 1024  # 4096
+        self.number_of_hidden_neurons_for_1_fully_connected = 2048  # 4096
 
         # parameters for second fully connected layer
-        self.number_of_hidden_neurons_for_2_fully_connected = 1024  # 4096
+        self.number_of_hidden_neurons_for_2_fully_connected = 2048  # 4096
 
         self.number_of_output_neurons = 1
 
@@ -95,8 +77,11 @@ class EffectiveSimilarityNetwork(nn.Module):
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
+        print('x after the all pairs layer', x)
         x = F.relu(self.fc2(x))
+        print('x after the first linear layer', x)
         x = self.fc3(x)
+        print('x ', x.view(300, 300))
         return x
 
 # def create_similarity_network(number_of_input_features):
