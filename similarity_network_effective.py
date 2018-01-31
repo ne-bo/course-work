@@ -10,23 +10,23 @@ class AllPairs(nn.Module):
         super(AllPairs, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
+        self.fc1 = nn.Linear(self.in_features, self.out_features).cuda()
+        self.fc2 = nn.Linear(self.in_features, self.out_features).cuda()
 
     def forward(self, input):
         #print('input', input)
-
-        fc1 = nn.Linear(self.in_features, self.out_features).cuda()
-        fc2 = nn.Linear(self.in_features, self.out_features).cuda()
         # split the input to 2 parts corresponding to 2 different batches
         batch_size = input.size(0)//2
-        input_1 = fc1(input[:batch_size])
-        input_2 = fc2(input[batch_size:])
+        input_1 = self.fc1(input[:batch_size])
+        input_2 = self.fc2(input[batch_size:])
 
         #print('input_1 ', input_1)
         #print('input_2 ', input_2)
         input_1 = input_1.expand(input_1.size(0), input_1.size(0), input_1.size(1))
-        # print('input_1 after the expansion ', input_1)
+        #print('input_1 after the expansion ', input_1)
         input_2 = torch.transpose(input_2.expand(input_2.size(0), input_2.size(0), input_2.size(1)), 0, 1)
-        # print('input_2 after the expansion and transposition', input_2)
+        #print('input_2 after the expansion and transposition', input_2)
+
         return input_1 + input_2
 
     def __repr__(self):
@@ -77,11 +77,13 @@ class EffectiveSimilarityNetwork(nn.Module):
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
-        print('x after the all pairs layer', x)
+        #print('x after the all pairs layer', x)
         x = F.relu(self.fc2(x))
-        print('x after the first linear layer', x)
+        #reg = torch.nn.Dropout(p=0.5)
+       # y = x
+       # print('x after the first linear layer', x, ' ', y.sum())
         x = self.fc3(x)
-        print('x ', x.view(300, 300))
+        #print('x ', x.view(300, 300))
         return x
 
 # def create_similarity_network(number_of_input_features):

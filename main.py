@@ -1,3 +1,5 @@
+from torch.autograd import Variable
+
 import cifar
 import learning
 import metric_learning_utils
@@ -22,6 +24,7 @@ import birds
 import torch.utils.model_zoo
 import metric_learning
 import similarity_network
+import numpy as np
 
 
 def debug_images_show(train_loader_for_classification):
@@ -182,6 +185,7 @@ def visual_similarity_learning(network, train_loader, test_loader):
                                                                          'all_labels_file_train')
         all_outputs_test, all_labels_test = spoc.read_spocs_and_labels('all_spocs_file_test_after_pca',
                                                                        'all_labels_file_test')
+
 
     # print('representation_network = ', representation_network)
     print('representation_length = ', representation_length)

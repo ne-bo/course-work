@@ -1,3 +1,4 @@
+import gc
 import torchvision.models as models
 
 from metric_learning_utils import get_distance_matrix
@@ -109,12 +110,18 @@ def metric_learning(all_outputs_train, all_labels_train,
                     # use different batches to get all combinations
                     distance_matrix_effective = get_distance_matrix(representation_outputs_1,
                                                                     representation_outputs_2,
-                                                                    distance_type='l1')
+                                                                    distance_type='euclidean')
                     # print('similarity_outputs', similarity_outputs)
                     # we use tril here because our distance matrix is symmetric
-                    loss = criterion((similarity_outputs.view(params.batch_size_for_similarity,
-                                                                        params.batch_size_for_similarity)),
-                                     Variable((distance_matrix_effective)))
+                    #print('similarity_outputs ', similarity_outputs.view(params.batch_size_for_similarity *
+                    #                                                    params.batch_size_for_similarity, -1))
+                    #print('distance_matrix_effective', distance_matrix_effective.view(params.batch_size_for_similarity *
+                    #                                                         params.batch_size_for_similarity, -1))
+
+                    loss = criterion((similarity_outputs.view(params.batch_size_for_similarity *
+                                                                        params.batch_size_for_similarity, -1)),
+                                     Variable(distance_matrix_effective.view(params.batch_size_for_similarity *
+                                                                             params.batch_size_for_similarity, -1)))
                 # During the second stage we introduce a margin delta
                 # and we add delta to the distance for positive pairs (with the same labels)
                 # and subtract the delta from the distance for negative pairs (with the different labels)
@@ -136,7 +143,10 @@ def metric_learning(all_outputs_train, all_labels_train,
             if i % params.skip_step == 0:  # print every 2000 mini-batches
                 print('[ephoch %d, itteration in the epoch %5d] loss: %.30f' %
                       (epoch + 1, i + 1, current_batch_loss))
-                print('fc2.weight = ', similarity_network.fc2.weight[0][0])
+                #print('similarity_network.fc1.fc1.weight = ', similarity_network.fc1.fc1.weight)
+                #print('similarity_network.fc1.fc2.weight = ', similarity_network.fc1.fc2.weight)
+                #print('fc2.weight = ', similarity_network.fc2.weight)
+                print('fc3.weight = ', similarity_network.fc3.weight)
 
                 r_loss.append(current_batch_loss)
                 iterations.append(total_iteration + i)
@@ -150,6 +160,7 @@ def metric_learning(all_outputs_train, all_labels_train,
             # print the quality metric
             # Here evaluation is heavy so we do it only every 10 epochs
             print('similarity_network ', similarity_network)
+            gc.collect()
 
             print('Evaluation on train\n')
             recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,

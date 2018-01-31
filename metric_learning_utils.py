@@ -18,6 +18,13 @@ def get_all_outputs_and_labels(test_loader, network):
     return all_outputs, all_labels
 
 
+def cos_dist(x, y):
+    xy = np.dot(x, y);
+    xx = np.dot(x, x);
+    yy = np.dot(y, y);
+
+    return -xy * 1.0 / np.sqrt(xx * yy)
+
 def get_distance_matrix(representation_outputs_1, representation_outputs_2, distance_type='euclidean'):
     n = representation_outputs_1.size(0)
     d = representation_outputs_1.size(1)
@@ -33,9 +40,9 @@ def get_distance_matrix(representation_outputs_1, representation_outputs_2, dist
             return torch.abs(x - y).sum(2)
         else:
             if distance_type == 'cosine':
-                dot_product_11 = torch.dot(representation_outputs_1, representation_outputs_1)
-                dot_product_22 = torch.dot(representation_outputs_2, representation_outputs_2)
-                dot_product_12 = torch.dot(representation_outputs_1, representation_outputs_2)
+                dot_product_11 = torch.mm(representation_outputs_1, representation_outputs_1)
+                dot_product_22 = torch.mm(representation_outputs_2, representation_outputs_2)
+                dot_product_12 = torch.mm(representation_outputs_1, representation_outputs_2)
                 norm_1 = torch.sqrt(dot_product_11 * dot_product_11)
                 norm_2 = torch.sqrt(dot_product_22 * dot_product_22)
                 return torch.div(-dot_product_12, norm_1 * norm_2)

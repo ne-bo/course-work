@@ -66,7 +66,7 @@ def get_neighbors_lists(k, labels, number_of_outputs, outputs, similarity_networ
         ##########################
         # For representation test we simply compute the distances while nearest neighbors search
         ##########################
-        neigh = NearestNeighbors(n_neighbors=k)
+        neigh = NearestNeighbors(n_neighbors=k, p=2)
         neigh.fit(outputs)
         # these are the lists of indices (inside the current batch) of the k nearest neighbors,
         # not the neighbors vectors themselves
@@ -77,7 +77,7 @@ def get_neighbors_lists(k, labels, number_of_outputs, outputs, similarity_networ
         #########################
         ground_truth_distances = metric_learning_utils.get_distance_matrix(outputs,
                                                                            outputs,
-                                                                           distance_type='l1')
+                                                                           distance_type='euclidean')
         print('ground_truth_distances ', ground_truth_distances)
         print('mean for grounf truth ', torch.mean(ground_truth_distances))
         distances_matrix = similarity_network(torch.cat((outputs,
@@ -147,20 +147,44 @@ def partial_test_for_representation(k, all_outputs, all_labels, similarity_netwo
     total_number_of_batches = 0
 
     number_of_outputs = all_outputs.shape[0]
-
     number_of_batches = all_outputs.shape[0] // params.batch_size_for_similarity
+    print('number_of_batches = ', number_of_batches)
+
+    # todo try to use really all possible pairs, not only pairs within the stable batches
+    distances_matrix = torch.from_numpy(np.zeros((number_of_outputs, number_of_outputs))).float()
     for i in range(number_of_batches):
-        representation_outputs = all_outputs[
-                                 i * params.batch_size_for_similarity: (i + 1) * params.batch_size_for_similarity]
-        labels = all_labels[i * params.batch_size_for_similarity: (i + 1) * params.batch_size_for_similarity]
+        #print('i = ', i)
+        for j in range(number_of_batches):
+            #print('j =  ', j)
+            representation_outputs_1 = all_outputs[
+                                       i * params.batch_size_for_similarity:
+                                       (i + 1) * params.batch_size_for_similarity]
+            labels_1 = all_labels[
+                       i * params.batch_size_for_similarity: (i + 1) * params.batch_size_for_similarity]
+            representation_outputs_2 = all_outputs[
+                                       j * params.batch_size_for_similarity:
+                                       (j + 1) * params.batch_size_for_similarity]
+            labels_2 = all_labels[
+                       j * params.batch_size_for_similarity: (j + 1) * params.batch_size_for_similarity]
+            similarity_outputs = similarity_network(Variable(torch.cat(
+                (representation_outputs_1,
+                 representation_outputs_2), dim=0))).view(params.batch_size_for_similarity,
+                                                          params.batch_size_for_similarity)
 
-        neighbors_lists = get_neighbors_lists(k, labels, params.batch_size_for_similarity,
-                                              Variable(representation_outputs), similarity_network)
+            distances_matrix[
+            i * params.batch_size_for_similarity:(i + 1) * params.batch_size_for_similarity,
+            j * params.batch_size_for_similarity:(j + 1) * params.batch_size_for_similarity] = similarity_outputs.data
+            gc.collect()
+            # print('full distances_matrix', distances_matrix)
 
-        # here we add new values for current batch to the given
-        # total_fraction_of_correct_labels and total_number_of_batches
-        total_fraction_of_correct_labels, total_number_of_batches = \
-            get_total_fraction_of_correct_labels_and_total_number_of_batches(labels,
+    print('full distances_matrix', distances_matrix)
+    neighbors_lists = get_neighbors_lists_from_distances_matrix(distances_matrix, k)
+    #neighbors_lists_ground_truth = get_neighbors_lists(k, all_labels,  number_of_outputs, Variable(all_outputs), similarity_network=None)
+
+    # here we add new values for current batch to the given
+    # total_fraction_of_correct_labels and total_number_of_batches
+    total_fraction_of_correct_labels, total_number_of_batches = \
+    get_total_fraction_of_correct_labels_and_total_number_of_batches(all_labels,
                                                                              neighbors_lists,
                                                                              params.batch_size_for_similarity,
                                                                              total_fraction_of_correct_labels,
@@ -168,5 +192,20 @@ def partial_test_for_representation(k, all_outputs, all_labels, similarity_netwo
 
     recall_at_k = float(total_fraction_of_correct_labels) / float(total_number_of_batches)
     print('recall_at_', k, ' of the network on the ', total_number_of_batches, ' batches: %f ' % recall_at_k)
+
+
+
+    # here we add new values for current batch to the given
+    # total_fraction_of_correct_labels and total_number_of_batches
+    #total_fraction_of_correct_labels, total_number_of_batches = \
+    #get_total_fraction_of_correct_labels_and_total_number_of_batches(all_labels,
+    #                                                                         neighbors_lists_ground_truth,
+    #                                                                         params.batch_size_for_similarity,
+    #                                                                         total_fraction_of_correct_labels,
+    #                                                                         total_number_of_batches)#
+    #
+    #recall_at_k = float(total_fraction_of_correct_labels) / float(total_number_of_batches)
+    #print('recall_at_', k, ' of the network on the ', total_number_of_batches, ' batches: %f grounf truth' % recall_at_k)
+
 
     return recall_at_k
