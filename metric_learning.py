@@ -18,40 +18,16 @@ import pstats
 import io
 
 
-def cos_dist(x, y):
-    xy = np.dot(x, y);
-    xx = np.dot(x, x);
-    yy = np.dot(y, y);
-
-    return -xy * 1.0 / np.sqrt(xx * yy)
-
-
-def pairwise_distances(x, y=None):
-    '''
-    Input: x is a Nxd matrix
-           y is an optional Mxd matirx
-    Output: dist is a NxM matrix where dist[i,j] is the square norm between x[i,:] and y[j,:]
-            if y is not given then use 'y=x'.
-    i.e. dist[i,j] = ||x[i,:]-y[j,:]||^2
-    '''
-    x_norm = (x ** 2).sum(1).view(-1, 1)
-    if y is not None:
-        y_norm = (y ** 2).sum(1).view(1, -1)
-    else:
-        y = x
-        y_norm = x_norm.view(1, -1)
-
-    dist = torch.sqrt(x_norm + y_norm - 2.0 * torch.mm(x, torch.transpose(y, 0, 1)))
-    return dist
-
-
 def metric_learning(all_outputs_train, all_labels_train,
                     representation_network, similarity_network,
                     start_epoch,
                     optimizer,
                     lr_scheduler,
                     criterion, stage,
-                    all_outputs_test, all_labels_test):
+                    all_outputs_test, all_labels_test,
+                    cosine_similarity_matrix,
+                    signs_matrix
+                    ):
     vis = visdom.Visdom()
     r_loss = []
     iterations = []
@@ -78,7 +54,6 @@ def metric_learning(all_outputs_train, all_labels_train,
         number_of_batches = all_outputs_train.shape[0] // params.batch_size_for_similarity
         print('number_of_batches = ', number_of_batches)
 
-        # todo try to use really all possible pairs, not only pairs within the stable batches
         for i in np.random.permutation(range(number_of_batches)):
             for j in np.random.permutation(range(number_of_batches)):
                 representation_outputs_1 = all_outputs_train[
@@ -112,31 +87,34 @@ def metric_learning(all_outputs_train, all_labels_train,
                 # During the first stage we just try to learn distances themselves
                 if stage == 1:
                     # use different batches to get all combinations
-                    distance_matrix_effective = get_distance_matrix(representation_outputs_1,
-                                                                    representation_outputs_2,
-                                                                    distance_type='euclidean')
                     # print('similarity_outputs', similarity_outputs)
                     # we use tril here because our distance matrix is symmetric
                     #print('similarity_outputs ', similarity_outputs.view(params.batch_size_for_similarity,
                     #                                                    params.batch_size_for_similarity))
-                    #print('distance_matrix_effective', distance_matrix_effective.view(params.batch_size_for_similarity,
-                    #                                                         params.batch_size_for_similarity))
-                    #input()
+                    distance_matrix_effective = cosine_similarity_matrix[i * params.batch_size_for_similarity:
+                                           (i + 1) * params.batch_size_for_similarity,
+                                                j * params.batch_size_for_similarity:
+                                                (j + 1) * params.batch_size_for_similarity
+                                                ]
                     loss = criterion((similarity_outputs.view(params.batch_size_for_similarity *
                                                                         params.batch_size_for_similarity, -1)),
-                                     Variable(distance_matrix_effective.view(params.batch_size_for_similarity *
-                                                                             params.batch_size_for_similarity, -1)))
+                                     Variable(distance_matrix_effective))
                     #print('loss = ', loss)
                     #input()
                 # During the second stage we introduce a margin delta
                 # and we add delta to the distance for positive pairs (with the same labels)
                 # and subtract the delta from the distance for negative pairs (with the different labels)
                 if stage == 2:
-                    # pair_distances_with_deltas = distances_for_pairs + params.delta_for_similarity * signs_for_pairs
-                    # loss = criterion(similarity_outputs, pair_distances_with_deltas)
-                    # todo fill signs and cosine similarities matrices
-                    cosine_similarities = None
-                    signs_for_pairs = None
+                    cosine_similarities = cosine_similarity_matrix[i * params.batch_size_for_similarity:
+                                           (i + 1) * params.batch_size_for_similarity,
+                                                j * params.batch_size_for_similarity:
+                                                (j + 1) * params.batch_size_for_similarity
+                                                ]
+                    signs_for_pairs = signs_matrix[i * params.batch_size_for_similarity:
+                                           (i + 1) * params.batch_size_for_similarity,
+                                                j * params.batch_size_for_similarity:
+                                                (j + 1) * params.batch_size_for_similarity
+                                                ]
                     cosine_similarities_with_deltas = cosine_similarities + params.delta_for_similarity * signs_for_pairs
                     loss = criterion(similarity_outputs, cosine_similarities_with_deltas)
                 # todo add hard examples for stage 3

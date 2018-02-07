@@ -201,6 +201,13 @@ def visual_similarity_learning(network, train_loader, test_loader):
                                            step_size=params.learning_rate_decay_epoch,
                                            gamma=params.learning_rate_decay_coefficient_for_similarity)
 
+    cosine_similarity_matrix = metric_learning_utils.get_distance_matrix(all_outputs_train,
+                                              all_outputs_train,
+                                              distance_type=params.distance_type)
+    signs_matrix = metric_learning_utils.get_signs_matrix(all_labels_train,
+                                              all_labels_train)
+
+    print('cosine_similarity_matrix constant ', cosine_similarity_matrix)
     if params.learn_stage_1:
         # *********
         # Stage 1
@@ -213,7 +220,10 @@ def visual_similarity_learning(network, train_loader, test_loader):
                                         lr_scheduler=exp_lr_scheduler,
                                         criterion=nn.MSELoss(),
                                         stage=1,
-                                        all_outputs_test=all_outputs_test, all_labels_test=all_labels_test)
+                                        all_outputs_test=all_outputs_test, all_labels_test=all_labels_test,
+                                        cosine_similarity_matrix=cosine_similarity_matrix,
+                                        signs_matrix=None
+                                        )
     print('Recover similarity network before the 2 stage')
     similarity_learning_network = utils.load_network_from_checkpoint(network=similarity_learning_network,
                                                                      epoch=params.default_recovery_epoch_for_similarity,
@@ -231,7 +241,10 @@ def visual_similarity_learning(network, train_loader, test_loader):
                                     lr_scheduler=exp_lr_scheduler,
                                     criterion=nn.L1Loss(),
                                     stage=2,
-                                    all_outputs_test=all_outputs_test, all_labels_test=all_labels_test)
+                                    all_outputs_test=all_outputs_test, all_labels_test=all_labels_test,
+                                    cosine_similarity_matrix=cosine_similarity_matrix,
+                                    signs_matrix=signs_matrix
+                                    )
 
 
 def main():

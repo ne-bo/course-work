@@ -49,11 +49,15 @@ def get_total_fraction_of_correct_labels_and_total_number_of_batches(labels, nei
     return total_fraction_of_correct_labels, total_number_of_batches
 
 
-def get_neighbors_lists_from_distances_matrix(distances_matrix, k):
+def get_neighbors_lists_from_distances_matrix(distances_matrix, k, distance_type='euclidean'):
     n = distances_matrix.shape[0]
     neighbors_lists = []
     for i in range(n):
-        neighbors_for_i = np.argsort(distances_matrix[i].cpu().numpy())[:k]  # this is for distances
+        if distance_type == 'cosine':
+            neighbors_for_i = np.argsort(distances_matrix[i].cpu().numpy())[n - k - 1: n - 1]  # this is for similarity
+        else:
+            neighbors_for_i = np.argsort(distances_matrix[i].cpu().numpy())[1 : k + 1]  # this is for distances
+
         neighbors_lists.append(neighbors_for_i)
     print('neighbors_lists not from sklearn', neighbors_lists)
     return neighbors_lists
@@ -77,7 +81,7 @@ def get_neighbors_lists(k, labels, number_of_outputs, outputs, similarity_networ
         #########################
         ground_truth_distances = metric_learning_utils.get_distance_matrix(outputs,
                                                                            outputs,
-                                                                           distance_type='euclidean')
+                                                                           distance_type=params.distance_type)
         print('ground_truth_distances ', ground_truth_distances)
         print('mean for grounf truth ', torch.mean(ground_truth_distances))
         distances_matrix = similarity_network(torch.cat((outputs,
@@ -85,7 +89,8 @@ def get_neighbors_lists(k, labels, number_of_outputs, outputs, similarity_networ
                                                                                      params.batch_size_for_similarity)
 
         print('distances_matrix ', distances_matrix)
-        neighbors_lists = get_neighbors_lists_from_distances_matrix(distances_matrix, k)
+        neighbors_lists = get_neighbors_lists_from_distances_matrix(distances_matrix, k,
+                                                                    distance_type=params.distance_type)
 
         gc.collect()
 
@@ -176,7 +181,7 @@ def partial_test_for_representation(k, all_outputs, all_labels, similarity_netwo
             gc.collect()
 
     print('full distances_matrix', distances_matrix)
-    neighbors_lists = get_neighbors_lists_from_distances_matrix(distances_matrix, k)
+    neighbors_lists = get_neighbors_lists_from_distances_matrix(distances_matrix, k, distance_type=params.distance_type)
     neighbors_lists_ground_truth = get_neighbors_lists(k, all_labels, number_of_outputs, Variable(all_outputs),
                                                        similarity_network=None)
 

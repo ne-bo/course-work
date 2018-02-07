@@ -31,7 +31,7 @@ initial_image_scale_size = 586 # 256 for resnet-50, 586 for VGG
 
 learning_rate_for_classification = 0.01
 learning_rate_for_representation = 0.01
-learning_rate_for_similarity = 0.01
+learning_rate_for_similarity = 0.001
 
 learning_rate_decay_epoch = 10
 learning_rate_decay_epoch_for_representation = 10
@@ -58,7 +58,7 @@ mode_classification = 'classification'
 mode_representation = 'representation'
 
 k_for_recall = 4 # 8 for birds, 4 for UKB
-
+distance_type = 'cosine' # possible values l1, euclidean, cosine
 
 delta_for_similarity = 0.5
 
