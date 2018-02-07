@@ -186,11 +186,13 @@ def visual_similarity_learning(network, train_loader, test_loader):
         all_outputs_test, all_labels_test = spoc.read_spocs_and_labels('all_spocs_file_test_after_pca',
                                                                        'all_labels_file_test')
 
+        #all_outputs_train = torch.from_numpy(np.eye(256)).float().cuda()
+        #print('artificial all_outputs_train', all_outputs_train )
 
     # print('representation_network = ', representation_network)
     print('representation_length = ', representation_length)
     similarity_learning_network = similarity_network_effective.EffectiveSimilarityNetwork(
-        number_of_input_features=representation_length).cuda()
+        number_of_input_features=representation_length, l1_initialization=False).cuda()
 
     optimizer_for_similarity_learning = optim.Adam(similarity_learning_network.parameters(),
                                                    lr=params.learning_rate_for_similarity)

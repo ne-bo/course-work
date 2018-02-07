@@ -79,8 +79,8 @@ def metric_learning(all_outputs_train, all_labels_train,
         print('number_of_batches = ', number_of_batches)
 
         # todo try to use really all possible pairs, not only pairs within the stable batches
-        for i in range(number_of_batches):
-            for j in range(number_of_batches):
+        for i in np.random.permutation(range(number_of_batches)):
+            for j in np.random.permutation(range(number_of_batches)):
                 representation_outputs_1 = all_outputs_train[
                                            i * params.batch_size_for_similarity:
                                            (i + 1) * params.batch_size_for_similarity]
@@ -92,6 +92,8 @@ def metric_learning(all_outputs_train, all_labels_train,
                 labels_2 = all_labels_train[
                            j * params.batch_size_for_similarity: (j + 1) * params.batch_size_for_similarity]
 
+                #print('representation_outputs_1 ', representation_outputs_1)
+                #print('representation_outputs_2 ', representation_outputs_2)
                 # zero the parameter gradients
                 optimizer.zero_grad()
 
@@ -99,6 +101,8 @@ def metric_learning(all_outputs_train, all_labels_train,
                 # pass into similarity network 2 concatenated batches which can be different
                 similarity_outputs = similarity_network(Variable(torch.cat((representation_outputs_1,
                                                                             representation_outputs_2), dim=0)))
+
+                #print('weights', similarity_network.fc1.fc1.weight)
 
                 # Learning Non-Metric Visual Similarity for Image Retrieval
                 # https://arxiv.org/abs/1709.01353
@@ -113,15 +117,17 @@ def metric_learning(all_outputs_train, all_labels_train,
                                                                     distance_type='euclidean')
                     # print('similarity_outputs', similarity_outputs)
                     # we use tril here because our distance matrix is symmetric
-                    #print('similarity_outputs ', similarity_outputs.view(params.batch_size_for_similarity *
-                    #                                                    params.batch_size_for_similarity, -1))
-                    #print('distance_matrix_effective', distance_matrix_effective.view(params.batch_size_for_similarity *
-                    #                                                         params.batch_size_for_similarity, -1))
-
+                    #print('similarity_outputs ', similarity_outputs.view(params.batch_size_for_similarity,
+                    #                                                    params.batch_size_for_similarity))
+                    #print('distance_matrix_effective', distance_matrix_effective.view(params.batch_size_for_similarity,
+                    #                                                         params.batch_size_for_similarity))
+                    #input()
                     loss = criterion((similarity_outputs.view(params.batch_size_for_similarity *
                                                                         params.batch_size_for_similarity, -1)),
                                      Variable(distance_matrix_effective.view(params.batch_size_for_similarity *
                                                                              params.batch_size_for_similarity, -1)))
+                    #print('loss = ', loss)
+                    #input()
                 # During the second stage we introduce a margin delta
                 # and we add delta to the distance for positive pairs (with the same labels)
                 # and subtract the delta from the distance for negative pairs (with the different labels)
@@ -138,23 +144,20 @@ def metric_learning(all_outputs_train, all_labels_train,
                 loss.backward()
                 optimizer.step()
 
-            # print statistics
-            current_batch_loss = loss.data[0]
-            if i % params.skip_step == 0:  # print every 2000 mini-batches
-                print('[ephoch %d, itteration in the epoch %5d] loss: %.30f' %
-                      (epoch + 1, i + 1, current_batch_loss))
-                #print('similarity_network.fc1.fc1.weight = ', similarity_network.fc1.fc1.weight)
-                #print('similarity_network.fc1.fc2.weight = ', similarity_network.fc1.fc2.weight)
-                #print('fc2.weight = ', similarity_network.fc2.weight)
-                print('fc3.weight = ', similarity_network.fc3.weight)
-
-                r_loss.append(current_batch_loss)
-                iterations.append(total_iteration + i)
-
-                options = dict(legend=['loss for stage ' + str(stage)])
-                loss_plot = vis.line(Y=np.array(r_loss), X=np.array(iterations),
-                                     # , update='append',
-                                     win=loss_plot, opts=options)
+        # print statistics
+        current_batch_loss = loss.data[0]
+        print('[ephoch %d, itteration in the epoch %5d] loss: %.30f' %
+          (epoch + 1, i + 1, current_batch_loss))
+        #print('similarity_network.fc1.fc1.weight = ', similarity_network.fc1.fc1.weight)
+        #print('similarity_network.fc1.fc2.weight = ', similarity_network.fc1.fc2.weight)
+        #print('fc2.weight = ', similarity_network.fc2.weight)
+        print('fc3.weight = ', similarity_network.fc3.weight)
+        r_loss.append(current_batch_loss)
+        iterations.append(total_iteration + i)
+        options = dict(legend=['loss for stage ' + str(stage)])
+        loss_plot = vis.line(Y=np.array(r_loss), X=np.array(iterations),
+                               # , update='append',
+                             win=loss_plot, opts=options)
 
         if epoch % 10 == 0:
             # print the quality metric

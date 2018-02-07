@@ -3,15 +3,30 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 from torch.nn import Parameter
+import numpy as np
+
+import params
 
 
 class AllPairs(nn.Module):
-    def __init__(self, in_features, out_features):
+    def __init__(self, in_features, out_features, l1_initialization=False):
         super(AllPairs, self).__init__()
+        self.l1_initialization = l1_initialization
         self.in_features = in_features
         self.out_features = out_features
         self.fc1 = nn.Linear(self.in_features, self.out_features).cuda()
         self.fc2 = nn.Linear(self.in_features, self.out_features).cuda()
+        if self.l1_initialization:
+            self.fc1 = nn.Linear(self.in_features, self.in_features).cuda()
+            self.fc2 = nn.Linear(self.in_features, self.in_features).cuda()
+            self.fc3 = nn.Linear(self.in_features, self.out_features).cuda()
+            #print('self.fc1.weight ', self.fc1.weight.size())
+            self.fc1.weight.data = torch.from_numpy(np.eye(self.fc1.weight.size(0))).float()
+            self.fc1.bias.data.fill_(0.0)
+            self.fc2.weight.data = torch.from_numpy(-np.eye(self.fc2.weight.size(0))).float()
+            self.fc2.bias.data.fill_(0.0)
+            self.fc3.weight.data.fill_(1.0/self.fc3.weight.size(0))
+            self.fc3.bias.data.fill_(0.0)
 
     def forward(self, input):
         #print('input', input)
@@ -26,15 +41,17 @@ class AllPairs(nn.Module):
         #print('input_1 after the expansion ', input_1)
         input_2 = torch.transpose(input_2.expand(input_2.size(0), input_2.size(0), input_2.size(1)), 0, 1)
         #print('input_2 after the expansion and transposition', input_2)
+        #print('input_1 + input_2 ', input_1 + input_2)
 
-        return input_1 + input_2
-
-    def __repr__(self):
-        return self.__class__.__name__
+        if self.l1_initialization:
+            return self.fc3(torch.abs(input_1 + input_2))
+        else:
+            return input_1 + input_2  # the best variant is not to use small 2 matricies, but use big 2 matriccies
+            # we can't get l-1 distance this way, but we can get better quality
 
 
 class EffectiveSimilarityNetwork(nn.Module):
-    def __init__(self, number_of_input_features):
+    def __init__(self, number_of_input_features, l1_initialization=False):
         super(EffectiveSimilarityNetwork, self).__init__()
 
         ##################################################################
@@ -50,10 +67,10 @@ class EffectiveSimilarityNetwork(nn.Module):
         self.number_of_input_features = number_of_input_features
 
         # parameters for first fully connected layer
-        self.number_of_hidden_neurons_for_1_fully_connected = 2048  # 4096
+        self.number_of_hidden_neurons_for_1_fully_connected = 2048
 
         # parameters for second fully connected layer
-        self.number_of_hidden_neurons_for_2_fully_connected = 2048  # 4096
+        self.number_of_hidden_neurons_for_2_fully_connected = 2048
 
         self.number_of_output_neurons = 1
 
@@ -63,27 +80,34 @@ class EffectiveSimilarityNetwork(nn.Module):
         #
         ##################################################################
         self.fc1 = AllPairs(in_features=self.number_of_input_features,
-                            out_features=self.number_of_hidden_neurons_for_1_fully_connected)
+                            out_features=self.number_of_hidden_neurons_for_1_fully_connected,
+                            l1_initialization=l1_initialization)
 
         self.fc2 = nn.Linear(self.number_of_hidden_neurons_for_1_fully_connected,
                              self.number_of_hidden_neurons_for_2_fully_connected)
 
         self.fc3 = nn.Linear(self.number_of_hidden_neurons_for_2_fully_connected,
                              self.number_of_output_neurons)
+        if l1_initialization:
+            self.fc2.weight.data = torch.from_numpy(np.eye(self.fc2.weight.size(0))).float()
+            self.fc2.bias.data.fill_(0.0)
+            self.fc3.weight.data.fill_(1.0)
+            self.fc3.bias.data.fill_(0.0)
+            #print('after!\n')
 
-        ##################################################################
-        # Weights initialization
-        ##################################################################
+            print('self.fc2.weight ', self.fc2.weight)
+            print('self.fc3.weight ', self.fc3.weight)
+
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
         #print('x after the all pairs layer', x)
         x = F.relu(self.fc2(x))
         #reg = torch.nn.Dropout(p=0.5)
-       # y = x
-       # print('x after the first linear layer', x, ' ', y.sum())
+        #y = x
+        #print('x after the first linear layer', x, ' ', y.sum())
         x = self.fc3(x)
-        #print('x ', x.view(300, 300))
+        #print('x after fc3 ', x.view(params.batch_size_for_similarity, params.batch_size_for_similarity))
         return x
 
 # def create_similarity_network(number_of_input_features):

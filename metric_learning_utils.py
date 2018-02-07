@@ -3,7 +3,7 @@ import torch
 from torch.autograd import Variable
 
 import loss
-
+import histogramm_loss
 
 def get_all_outputs_and_labels(test_loader, network):
     all_outputs = torch.cuda.FloatTensor()
@@ -25,6 +25,7 @@ def cos_dist(x, y):
 
     return -xy * 1.0 / np.sqrt(xx * yy)
 
+
 def get_distance_matrix(representation_outputs_1, representation_outputs_2, distance_type='euclidean'):
     n = representation_outputs_1.size(0)
     d = representation_outputs_1.size(1)
@@ -39,7 +40,7 @@ def get_distance_matrix(representation_outputs_1, representation_outputs_2, dist
         if distance_type == 'l1':
             return torch.abs(x - y).sum(2)
         else:
-            if distance_type == 'cosine':
+            if distance_type == 'cosine':#todo actually this code doesn't give us cosime distances need to correct it
                 dot_product_11 = torch.mm(representation_outputs_1, representation_outputs_1)
                 dot_product_22 = torch.mm(representation_outputs_2, representation_outputs_2)
                 dot_product_12 = torch.mm(representation_outputs_1, representation_outputs_2)
@@ -47,4 +48,8 @@ def get_distance_matrix(representation_outputs_1, representation_outputs_2, dist
                 norm_2 = torch.sqrt(dot_product_22 * dot_product_22)
                 return torch.div(-dot_product_12, norm_1 * norm_2)
             else:
-                raise Exception('You should use euclidean, l1 or cosine distance!')
+                if distance_type == 'histogram':
+                    loss = histogramm_loss.HistogramLoss(150)
+                    pass
+                else:
+                    raise Exception('You should use euclidean, l1, cosine distance or histogram loss!')

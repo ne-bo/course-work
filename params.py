@@ -11,7 +11,7 @@ batch_size_for_representation = 4 # here 27 is maximum if we want
 
 # for equal number of positive and negative examples
 number_of_samples_with_the_same_label_in_the_batch = (batch_size_for_representation + 1)/2
-batch_size_for_similarity = 150
+batch_size_for_similarity = 170
 
 data_folder = "./data"
 num_classes = 200
@@ -31,14 +31,14 @@ initial_image_scale_size = 586 # 256 for resnet-50, 586 for VGG
 
 learning_rate_for_classification = 0.01
 learning_rate_for_representation = 0.01
-learning_rate_for_similarity = 0.001
+learning_rate_for_similarity = 0.01
 
-learning_rate_decay_epoch = 20
+learning_rate_decay_epoch = 10
 learning_rate_decay_epoch_for_representation = 10
 
 learning_rate_decay_coefficient = 0.5
 learning_rate_decay_coefficient_for_representation = 0.5
-learning_rate_decay_coefficient_for_similarity = 0.3
+learning_rate_decay_coefficient_for_similarity = 0.5
 
 momentum_for_classification = 0.9
 momentum_for_similarity = 0.9
