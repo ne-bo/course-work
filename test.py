@@ -3,6 +3,8 @@ import torch
 from sklearn.neighbors import NearestNeighbors
 import datetime
 import numpy as np
+from tqdm import tqdm
+
 import metric_learning_utils
 import gc
 
@@ -52,14 +54,23 @@ def get_total_fraction_of_correct_labels_and_total_number_of_batches(labels, nei
 def get_neighbors_lists_from_distances_matrix(distances_matrix, k, distance_type='euclidean'):
     n = distances_matrix.shape[0]
     neighbors_lists = []
+    scores_lists = []
+    print('distance_type = ', distance_type)
     for i in range(n):
+        scores_for_i = []
         if distance_type == 'cosine':
-            neighbors_for_i = np.argsort(distances_matrix[i].cpu().numpy())[n - k - 1: n - 1]  # this is for similarity
+            distances_matrix[i, i] = -np.inf
+            neighbors_for_i = np.argsort(distances_matrix[i].cpu().numpy())[n - k:]  # this is for similarity
+            for j in neighbors_for_i:
+                scores_for_i.append(distances_matrix[i, j])
         else:
-            neighbors_for_i = np.argsort(distances_matrix[i].cpu().numpy())[1 : k + 1]  # this is for distances
+            distances_matrix[i, i] = np.inf
+            neighbors_for_i = np.argsort(distances_matrix[i].cpu().numpy())[:k]  # this is for distances
 
         neighbors_lists.append(neighbors_for_i)
+        scores_lists.append(scores_for_i)
     print('neighbors_lists not from sklearn', neighbors_lists)
+    print('scores_lists ', scores_lists)
     return neighbors_lists
 
 
@@ -156,7 +167,7 @@ def partial_test_for_representation(k, all_outputs, all_labels, similarity_netwo
     print('number_of_batches = ', number_of_batches)
 
     distances_matrix = torch.from_numpy(np.zeros((number_of_outputs, number_of_outputs))).float()
-    for i in range(number_of_batches):
+    for i in tqdm(range(number_of_batches)):
         # print('i = ', i)
         for j in range(number_of_batches):
             # print('j =  ', j)
@@ -182,8 +193,6 @@ def partial_test_for_representation(k, all_outputs, all_labels, similarity_netwo
 
     print('full distances_matrix', distances_matrix)
     neighbors_lists = get_neighbors_lists_from_distances_matrix(distances_matrix, k, distance_type=params.distance_type)
-    neighbors_lists_ground_truth = get_neighbors_lists(k, all_labels, number_of_outputs, Variable(all_outputs),
-                                                       similarity_network=None)
 
     # here we add new values for current batch to the given
     # total_fraction_of_correct_labels and total_number_of_batches

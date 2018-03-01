@@ -19,17 +19,9 @@ def get_all_outputs_and_labels(test_loader, network):
     return all_outputs, all_labels
 
 
-def cos_dist(x, y):
-    xy = torch.dot(x, y)
-    xx = torch.dot(x, x)
-    yy = torch.dot(y, y)
-    #print('xy', xy)
-    #print('xx', xx)
-    #print('yy', yy)
-    return xy/np.sqrt(xx * yy)
-
 from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine_similarity
-
+from sklearn.metrics.pairwise import euclidean_distances as sklearn_euclidean_distances
+from sklearn.metrics.pairwise import manhattan_distances as sklearn_l1_distances
 
 def get_distance_matrix(representation_outputs_1, representation_outputs_2, distance_type='euclidean'):
     n = representation_outputs_1.size(0)
@@ -40,15 +32,22 @@ def get_distance_matrix(representation_outputs_1, representation_outputs_2, dist
     # print('x ', x)
     # print('y ', y)
     if distance_type == 'euclidean':
-        return torch.sqrt(torch.pow(x - y, 2).sum(2))
+        euclidean_distances_matrix = sklearn_euclidean_distances(representation_outputs_1.cpu().numpy(),
+                                                                 representation_outputs_2.cpu().numpy())
+        return torch.from_numpy(euclidean_distances_matrix).float().cuda()
+
+        # return torch.sqrt(torch.pow(x - y, 2).sum(2))
     else:
         if distance_type == 'l1':
-            return torch.abs(x - y).sum(2)
+            l1_distances_matrix = sklearn_l1_distances(representation_outputs_1.cpu().numpy(),
+                                                                     representation_outputs_2.cpu().numpy())
+            return torch.from_numpy(l1_distances_matrix).float().cuda()
+            #return torch.abs(x - y).sum(2)
         else:
-            if distance_type == 'cosine':  # todo actually this code doesn't give us cosime distances need to correct it
+            if distance_type == 'cosine':
                 cosine_similarity_matrix = sklearn_cosine_similarity(representation_outputs_1.cpu().numpy(),
                                                                      representation_outputs_2.cpu().numpy())
-                #print('cosine_similarity_matrix ', cosine_similarity_matrix)
+                # print('cosine_similarity_matrix ', cosine_similarity_matrix)
                 return torch.from_numpy(cosine_similarity_matrix).float().cuda()
             else:
                 raise Exception('You should use euclidean, l1, cosine distance or histogram loss!')
@@ -62,13 +61,33 @@ def myfunc(a):
         return -1.0
 
 
+def myfunc_for_histogramm_loss(a):
+    # we should map 0 --> 1 and non-zero --> 0
+    if a == 0.0:
+        return 1
+    else:
+        return 0
+
+
 def get_signs_matrix(labels1, labels2):
     distances_between_labels = get_distance_matrix(labels1.unsqueeze(1).float(),
                                                    labels2.unsqueeze(1).float(),
                                                    distance_type='euclidean')
-    print('distances_between_labels ', distances_between_labels)
+    # print('distances_between_labels ', distances_between_labels)
     # we should map 0 --> 1 and non-zero --> -1
     vfunc = np.vectorize(myfunc)
     signs = torch.from_numpy(vfunc(distances_between_labels.cpu().numpy())).float().cuda()
-    print('signs ', signs)
+    # print('signs ', signs)
+    return signs
+
+
+def get_signs_matrix_for_histogramm_loss(labels1, labels2):
+    distances_between_labels = get_distance_matrix(labels1.unsqueeze(1).float(),
+                                                   labels2.unsqueeze(1).float(),
+                                                   distance_type='euclidean')
+    # print('distances_between_labels ', distances_between_labels)
+    # we should map 0 --> 1 and non-zero --> 0
+    vfunc = np.vectorize(myfunc_for_histogramm_loss)
+    signs = torch.from_numpy(vfunc(distances_between_labels.cpu().numpy())).byte().cuda()
+    # print('signs ', signs)
     return signs

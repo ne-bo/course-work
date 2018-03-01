@@ -38,7 +38,7 @@ learning_rate_decay_epoch_for_representation = 10
 
 learning_rate_decay_coefficient = 0.5
 learning_rate_decay_coefficient_for_representation = 0.5
-learning_rate_decay_coefficient_for_similarity = 0.5
+learning_rate_decay_coefficient_for_similarity = 0.8
 
 momentum_for_classification = 0.9
 momentum_for_similarity = 0.9
@@ -52,7 +52,7 @@ skip_step = 100
 
 name_prefix_for_saved_model_for_classification = 'model-cl-'
 name_prefix_for_saved_model_for_representation = 'model-rp-'
-name_prefix_for_similarity_saved_model = 'similarity-model-'
+name_prefix_for_similarity_saved_model = 'similarity-model-cosine-without-sampling'
 
 mode_classification = 'classification'
 mode_representation = 'representation'
@@ -60,7 +60,7 @@ mode_representation = 'representation'
 k_for_recall = 4 # 8 for birds, 4 for UKB
 distance_type = 'cosine' # possible values l1, euclidean, cosine
 
-delta_for_similarity = 0.5
+delta_for_similarity = 0.05
 
 ##################################################################
 #
@@ -80,3 +80,4 @@ learn_representation = False
 recover_representation_net_before_similarity = False
 default_recovery_epoch_for_similarity = 100
 learn_stage_1 = True
+learn_stage_2 = True

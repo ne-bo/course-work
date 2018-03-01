@@ -1,6 +1,7 @@
 from torch.autograd import Variable
 
 import cifar
+import histogramm_loss_for_similarity
 import learning
 import metric_learning_utils
 import similarity_network_effective
@@ -186,13 +187,22 @@ def visual_similarity_learning(network, train_loader, test_loader):
         all_outputs_test, all_labels_test = spoc.read_spocs_and_labels('all_spocs_file_test_after_pca',
                                                                        'all_labels_file_test')
 
-        #all_outputs_train = torch.from_numpy(np.eye(256)).float().cuda()
-        #print('artificial all_outputs_train', all_outputs_train )
+        # all_outputs_train = torch.from_numpy(np.eye(256)).float().cuda()
+        # print('artificial all_outputs_train', all_outputs_train )
 
     # print('representation_network = ', representation_network)
     print('representation_length = ', representation_length)
     similarity_learning_network = similarity_network_effective.EffectiveSimilarityNetwork(
         number_of_input_features=representation_length, l1_initialization=False).cuda()
+
+
+    #print('Recover similarity network before the 1 stage')
+    #similarity_learning_network = utils.load_network_from_checkpoint(network=similarity_learning_network,
+    #                                                              epoch=params.default_recovery_epoch_for_similarity,
+    #                                                                name_prefix_for_saved_model=
+    #                                                                params.name_prefix_for_similarity_saved_model,
+    #                                                                 stage=1)
+
 
     optimizer_for_similarity_learning = optim.Adam(similarity_learning_network.parameters(),
                                                    lr=params.learning_rate_for_similarity)
@@ -202,12 +212,16 @@ def visual_similarity_learning(network, train_loader, test_loader):
                                            gamma=params.learning_rate_decay_coefficient_for_similarity)
 
     cosine_similarity_matrix = metric_learning_utils.get_distance_matrix(all_outputs_train,
-                                              all_outputs_train,
-                                              distance_type=params.distance_type)
+                                                                         all_outputs_train,
+                                                                         distance_type=params.distance_type)
     signs_matrix = metric_learning_utils.get_signs_matrix(all_labels_train,
-                                              all_labels_train)
+                                                          all_labels_train)
+
+    signs_matrix_for_histogramm_loss = metric_learning_utils.get_signs_matrix_for_histogramm_loss(all_labels_train,
+                                                                                                  all_labels_train)
 
     print('cosine_similarity_matrix constant ', cosine_similarity_matrix)
+    print('signs_matrix ', signs_matrix)
     if params.learn_stage_1:
         # *********
         # Stage 1
@@ -224,27 +238,63 @@ def visual_similarity_learning(network, train_loader, test_loader):
                                         cosine_similarity_matrix=cosine_similarity_matrix,
                                         signs_matrix=None
                                         )
+
     print('Recover similarity network before the 2 stage')
     similarity_learning_network = utils.load_network_from_checkpoint(network=similarity_learning_network,
-                                                                     epoch=params.default_recovery_epoch_for_similarity,
-                                                                     name_prefix_for_saved_model=
-                                                                     params.name_prefix_for_similarity_saved_model)
+                                                                  epoch=params.default_recovery_epoch_for_similarity,
+                                                                    name_prefix_for_saved_model=
+                                                                    params.name_prefix_for_similarity_saved_model,
+                                                                     stage=1)
+    #for epoch in range(0, 100, 10):
+    #    print('Recover similarity network before the 2 stage ---- epoch %d', epoch)
+    #    similarity_learning_network = utils.load_network_from_checkpoint(network=similarity_learning_network,
+    #                                                                 epoch=epoch,
+    #                                                                 name_prefix_for_saved_model=
+    #                                                                 params.name_prefix_for_similarity_saved_model,
+    #                                                                 stage=1)
+    #    print('Evaluation on train after the stage 1')
+    #    recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
+    #                                                   all_outputs=all_outputs_train,
+    #                                                   all_labels=all_labels_train,
+    #                                                   similarity_network=similarity_learning_network)
+    #    print('Evaluation on test after the stage 1')
+    #    recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
+    #                                                   all_outputs=all_outputs_test,
+    #                                                   all_labels=all_labels_test,
+    #                                                   similarity_network=similarity_learning_network)
 
     # *********
     # Stage 2
     # *********
-    metric_learning.metric_learning(all_outputs_train, all_labels_train,
+    if params.learn_stage_2:
+        metric_learning.metric_learning(all_outputs_train, all_labels_train,
                                     representation_network,
                                     similarity_network=similarity_learning_network,
                                     start_epoch=0,
                                     optimizer=optimizer_for_similarity_learning,
                                     lr_scheduler=exp_lr_scheduler,
-                                    criterion=nn.L1Loss(),
+                                    criterion=nn.MSELoss(),
                                     stage=2,
                                     all_outputs_test=all_outputs_test, all_labels_test=all_labels_test,
                                     cosine_similarity_matrix=cosine_similarity_matrix,
                                     signs_matrix=signs_matrix
                                     )
+    print('Recover similarity network after the 2 stage')
+    similarity_learning_network = utils.load_network_from_checkpoint(network=similarity_learning_network,
+                                                                     epoch=params.default_recovery_epoch_for_similarity,
+                                                                     name_prefix_for_saved_model=
+                                                                     params.name_prefix_for_similarity_saved_model,
+                                                                     stage=2)
+    print('Evaluation on train after the stage 2')
+    recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
+                                                       all_outputs=all_outputs_train,
+                                                       all_labels=all_labels_train,
+                                                       similarity_network=similarity_learning_network)
+    print('Evaluation on test after the stage 2')
+    recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
+                                                       all_outputs=all_outputs_test,
+                                                       all_labels=all_labels_test,
+                                                       similarity_network=similarity_learning_network)
 
 
 def main():

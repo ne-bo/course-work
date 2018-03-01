@@ -30,10 +30,13 @@ def load_network_and_optimizer_from_checkpoint(network, optimizer, epoch, name_p
     return network, optimizer
 
 
-def load_network_from_checkpoint(network, epoch, name_prefix_for_saved_model):
+def load_network_from_checkpoint(network, epoch, name_prefix_for_saved_model, stage=None):
     # optionally resume from a checkpoint
     print("=> loading checkpoint '{}'")
-    checkpoint = torch.load(name_prefix_for_saved_model + '-%d' % epoch)
+    if stage != None:
+        checkpoint = torch.load(name_prefix_for_saved_model + '-%d-%d' % (epoch, stage))
+    else:
+        checkpoint = torch.load(name_prefix_for_saved_model + '-%d' % epoch)
     network.load_state_dict(checkpoint['state_dict'])
     print("=> loaded checkpoint '{}' (epoch {%d})" % epoch)
     return network

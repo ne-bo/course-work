@@ -14,18 +14,16 @@ class AllPairs(nn.Module):
         self.l1_initialization = l1_initialization
         self.in_features = in_features
         self.out_features = out_features
-        self.fc1 = nn.Linear(self.in_features, self.out_features).cuda()
-        self.fc2 = nn.Linear(self.in_features, self.out_features).cuda()
+        self.fc1 = nn.Linear(self.in_features, self.in_features).cuda()
+        self.fc2 = nn.Linear(self.in_features, self.in_features).cuda()
+        self.fc3 = nn.Linear(self.in_features, self.out_features).cuda()
         if self.l1_initialization:
-            self.fc1 = nn.Linear(self.in_features, self.in_features).cuda()
-            self.fc2 = nn.Linear(self.in_features, self.in_features).cuda()
-            self.fc3 = nn.Linear(self.in_features, self.out_features).cuda()
-            #print('self.fc1.weight ', self.fc1.weight.size())
             self.fc1.weight.data = torch.from_numpy(np.eye(self.fc1.weight.size(0))).float()
             self.fc1.bias.data.fill_(0.0)
             self.fc2.weight.data = torch.from_numpy(-np.eye(self.fc2.weight.size(0))).float()
             self.fc2.bias.data.fill_(0.0)
-            self.fc3.weight.data.fill_(1.0/self.fc3.weight.size(0))
+            self.fc3.weight.data.fill_(1.0)#/(self.fc3.weight.size(0) * self.fc3.weight.size(1)))
+            #print('in all pairs self.fc3.weight.data ', self.fc3.weight.data)
             self.fc3.bias.data.fill_(0.0)
 
     def forward(self, input):
@@ -39,15 +37,18 @@ class AllPairs(nn.Module):
         #print('input_2 ', input_2)
         input_1 = input_1.expand(input_1.size(0), input_1.size(0), input_1.size(1))
         #print('input_1 after the expansion ', input_1)
+        #print('input_1 difference between layers', input_1[:, 0, :] - input_1[:, 1, :])
+
         input_2 = torch.transpose(input_2.expand(input_2.size(0), input_2.size(0), input_2.size(1)), 0, 1)
         #print('input_2 after the expansion and transposition', input_2)
         #print('input_1 + input_2 ', input_1 + input_2)
+        all_sums = input_1 + input_2
+        #print('all_sums ', all_sums[:, :, 0])
+        all_sums = all_sums.view(-1, self.in_features)
 
-        if self.l1_initialization:
-            return self.fc3(torch.abs(input_1 + input_2))
-        else:
-            return input_1 + input_2  # the best variant is not to use small 2 matricies, but use big 2 matriccies
-            # we can't get l-1 distance this way, but we can get better quality
+        #print('self.fc3 ',self.fc3)
+        #print('self.fc3(all_sums) ', self.fc3(all_sums))
+        return self.fc3(all_sums)
 
 
 class EffectiveSimilarityNetwork(nn.Module):
@@ -91,12 +92,12 @@ class EffectiveSimilarityNetwork(nn.Module):
         if l1_initialization:
             self.fc2.weight.data = torch.from_numpy(np.eye(self.fc2.weight.size(0))).float()
             self.fc2.bias.data.fill_(0.0)
-            self.fc3.weight.data.fill_(1.0)
+            self.fc3.weight.data.fill_(1.0)#/(self.fc3.weight.size(0) * self.fc3.weight.size(1)))
             self.fc3.bias.data.fill_(0.0)
             #print('after!\n')
 
-            print('self.fc2.weight ', self.fc2.weight)
-            print('self.fc3.weight ', self.fc3.weight)
+            #print('self.fc2.weight ', self.fc2.weight)
+            #print('self.fc3.weight ', self.fc3.weight)
 
 
     def forward(self, x):
@@ -107,6 +108,7 @@ class EffectiveSimilarityNetwork(nn.Module):
         #y = x
         #print('x after the first linear layer', x, ' ', y.sum())
         x = self.fc3(x)
+
         #print('x after fc3 ', x.view(params.batch_size_for_similarity, params.batch_size_for_similarity))
         return x
 
