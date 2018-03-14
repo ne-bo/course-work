@@ -1,13 +1,12 @@
-from torch.autograd import Variable
+import gc
+
+import numpy as np
 import torch
 from sklearn.neighbors import NearestNeighbors
-import datetime
-import numpy as np
+from torch.autograd import Variable
 from tqdm import tqdm
 
 import metric_learning_utils
-import gc
-
 import params
 
 
@@ -36,9 +35,11 @@ def get_total_fraction_of_correct_labels_and_total_number_of_batches(labels, nei
                                                                      total_fraction_of_correct_labels,
                                                                      total_number_of_batches):
     total_fraction_of_correct_labels_in_the_batch = 0
+    print('number_of_outputs ', number_of_outputs)
     for i in range(number_of_outputs):
         actual_label = labels[i]
-        # print('actual_label ', actual_label, 'neighbors_lists[i] ', neighbors_lists[i])
+        #print('i = ', i, ' actual_label ', actual_label, 'neighbors_lists[i] ', neighbors_lists[i],
+        #      ' labels.cpu().numpy()[neighbors_lists[i]] ', labels.cpu().numpy()[neighbors_lists[i]])
         fraction_of_correct_labels_among_the_k_nearest_neighbors = \
             fraction_of_correct_labels_in_array(actual_label, neighbors_lists[i], labels)
 
@@ -55,22 +56,23 @@ def get_neighbors_lists_from_distances_matrix(distances_matrix, k, distance_type
     n = distances_matrix.shape[0]
     neighbors_lists = []
     scores_lists = []
-    print('distance_type = ', distance_type)
     for i in range(n):
         scores_for_i = []
         if distance_type == 'cosine':
-            distances_matrix[i, i] = -np.inf
+            #distances_matrix[i, i] = -np.inf
             neighbors_for_i = np.argsort(distances_matrix[i].cpu().numpy())[n - k:]  # this is for similarity
             for j in neighbors_for_i:
                 scores_for_i.append(distances_matrix[i, j])
         else:
-            distances_matrix[i, i] = np.inf
+            #distances_matrix[i, i] = np.inf
             neighbors_for_i = np.argsort(distances_matrix[i].cpu().numpy())[:k]  # this is for distances
 
         neighbors_lists.append(neighbors_for_i)
         scores_lists.append(scores_for_i)
-    print('neighbors_lists not from sklearn', neighbors_lists)
+    print('distance_type = ', distance_type, ' len neighbors lists ', len(neighbors_lists),
+          ' neighbors_lists not from sklearn', neighbors_lists)
     print('scores_lists ', scores_lists)
+    input()
     return neighbors_lists
 
 
@@ -167,20 +169,15 @@ def partial_test_for_representation(k, all_outputs, all_labels, similarity_netwo
     print('number_of_batches = ', number_of_batches)
 
     distances_matrix = torch.from_numpy(np.zeros((number_of_outputs, number_of_outputs))).float()
+
     for i in tqdm(range(number_of_batches)):
-        # print('i = ', i)
         for j in range(number_of_batches):
-            # print('j =  ', j)
             representation_outputs_1 = all_outputs[
                                        i * params.batch_size_for_similarity:
                                        (i + 1) * params.batch_size_for_similarity]
-            labels_1 = all_labels[
-                       i * params.batch_size_for_similarity: (i + 1) * params.batch_size_for_similarity]
             representation_outputs_2 = all_outputs[
                                        j * params.batch_size_for_similarity:
                                        (j + 1) * params.batch_size_for_similarity]
-            labels_2 = all_labels[
-                       j * params.batch_size_for_similarity: (j + 1) * params.batch_size_for_similarity]
             similarity_outputs = similarity_network(Variable(torch.cat(
                 (representation_outputs_1,
                  representation_outputs_2), dim=0))).view(params.batch_size_for_similarity,
@@ -191,15 +188,23 @@ def partial_test_for_representation(k, all_outputs, all_labels, similarity_netwo
             j * params.batch_size_for_similarity:(j + 1) * params.batch_size_for_similarity] = similarity_outputs.data
             gc.collect()
 
-    print('full distances_matrix', distances_matrix)
+    print('full distances_matrix', distances_matrix.numpy().shape)
+    #print('3617', np.sort(distances_matrix.numpy()[3617]))
+    #print('3618', np.sort(distances_matrix.numpy()[3618]))
+    #print('3619', np.sort(distances_matrix.numpy()[3619]))
+    #print('3620', np.sort(distances_matrix.numpy()[3620]))
+    #print('3621', np.sort(distances_matrix.numpy()[3621]))
+    #print('0', np.sort(distances_matrix.numpy()[0]))
+    #print('1', np.sort(distances_matrix.numpy()[0]))
     neighbors_lists = get_neighbors_lists_from_distances_matrix(distances_matrix, k, distance_type=params.distance_type)
 
     # here we add new values for current batch to the given
     # total_fraction_of_correct_labels and total_number_of_batches
+    print('all_labels before fraction ', all_labels.numpy())
     total_fraction_of_correct_labels, total_number_of_batches = \
         get_total_fraction_of_correct_labels_and_total_number_of_batches(all_labels,
                                                                          neighbors_lists,
-                                                                         params.batch_size_for_similarity,
+                                                                         distances_matrix.numpy().shape[0],
                                                                          total_fraction_of_correct_labels,
                                                                          total_number_of_batches)
 

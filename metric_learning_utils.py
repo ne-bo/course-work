@@ -2,9 +2,6 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
-import loss
-import histogramm_loss
-
 
 def get_all_outputs_and_labels(test_loader, network):
     all_outputs = torch.cuda.FloatTensor()

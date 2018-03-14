@@ -1,13 +1,13 @@
-import torch.nn as nn
 import math
-import torch.utils.model_zoo as model_zoo
-import cifar
-import params
-import torch.optim as optim
-import learning
-import utils
-from torch.optim import lr_scheduler
+
 import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.optim import lr_scheduler
+
+import cifar
+import learning
+import params
 
 
 # Lera's implementation

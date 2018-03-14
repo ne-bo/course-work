@@ -1,12 +1,8 @@
 import torch
-from torch.autograd import Variable
-import numpy as np
-import torchtricks.criterion
 
 
 # Learning Deep Embeddings with Histogram Loss
 # https://arxiv.org/abs/1611.00822
-import params
 
 
 class MarginLossForSimilarity(torch.nn.Module):

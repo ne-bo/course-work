@@ -1,22 +1,17 @@
-import torch.optim as optim
+import cProfile
+import datetime
+import io
+import pstats
+
+import numpy as np
+import visdom
 from torch.autograd import Variable
-import torch.nn as nn
+from torch.optim import lr_scheduler
 
 import metric_learning_utils
 import params
-import utils
-import torch
-from loss import MarginLoss
 import test
-import visdom
-import numpy as np
-import datetime
-from torch.optim import lr_scheduler
-import cProfile
-import pstats
-import io
-import cifar
-import gc
+import utils
 
 
 def learning_process(train_loader,

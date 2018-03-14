@@ -1,13 +1,12 @@
-import torchvision.models as models
 import torch
+import torch.nn as nn
+import torchvision.models as models
 from torch.autograd import Variable
 
 import UKB
-import birds
-from small_resnet_for_cifar import L2Normalization
-import torch.nn as nn
-import test
 import params
+import test
+from small_resnet_for_cifar import L2Normalization
 
 
 def learn_PCA_matrix_for_spocs(spocs, desired_dimension):

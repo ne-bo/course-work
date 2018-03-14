@@ -1,7 +1,6 @@
-import torch.nn.modules.loss as loss
-from torch.nn import functional as F
 import numpy as np
 import torch
+import torch.nn.modules.loss as loss
 from torch.autograd import Variable
 
 

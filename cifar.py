@@ -1,10 +1,11 @@
-import torchvision.transforms as transforms
-import params
-import torch.utils.data as data
-from torch.utils.data.sampler import BatchSampler
-import torchvision.datasets as datasets
 import numpy as np
+import torch.utils.data as data
+import torchvision.datasets as datasets
+import torchvision.transforms as transforms
 from sklearn import model_selection
+from torch.utils.data.sampler import BatchSampler
+
+import params
 from sampling import UniformSampler
 
 

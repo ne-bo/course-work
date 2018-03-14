@@ -1,11 +1,12 @@
-import torchvision.transforms as transforms
-import params
-import torch.utils.data as data
-from torch.utils.data.sampler import BatchSampler
 import numpy as np
-from sampling import UniformSampler
-from torch.utils.data import Dataset, TensorDataset
+import torch.utils.data as data
+import torchvision.transforms as transforms
 from PIL import Image
+from torch.utils.data import Dataset
+from torch.utils.data.sampler import BatchSampler
+
+import params
+from sampling import UniformSampler
 
 
 def get_filenames_and_labels(data_folder, test_or_train='test'):

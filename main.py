@@ -1,31 +1,23 @@
-from torch.autograd import Variable
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.utils.model_zoo
+import torchvision
+import torchvision.models as models
+from torch.optim import lr_scheduler
 
+import birds
 import cifar
-import histogramm_loss_for_similarity
+import histogramm_loss
 import learning
+import metric_learning
 import metric_learning_utils
+import params
 import similarity_network_effective
+import small_resnet_for_cifar
 import spoc
 import test
-import params
-import torchvision
 import utils
-import torch
-import torch.optim as optim
-import torchvision.models as models
-import torch.nn as nn
-import loss
-from torch.optim import lr_scheduler
-import small_resnet_for_cifar
-import cProfile
-import pstats
-import io
-import histogramm_loss
-import birds
-import torch.utils.model_zoo
-import metric_learning
-import similarity_network
-import numpy as np
 
 
 def debug_images_show(train_loader_for_classification):
@@ -195,14 +187,12 @@ def visual_similarity_learning(network, train_loader, test_loader):
     similarity_learning_network = similarity_network_effective.EffectiveSimilarityNetwork(
         number_of_input_features=representation_length, l1_initialization=False).cuda()
 
-
-    #print('Recover similarity network before the 1 stage')
-    #similarity_learning_network = utils.load_network_from_checkpoint(network=similarity_learning_network,
+    # print('Recover similarity network before the 1 stage')
+    # similarity_learning_network = utils.load_network_from_checkpoint(network=similarity_learning_network,
     #                                                              epoch=params.default_recovery_epoch_for_similarity,
     #                                                                name_prefix_for_saved_model=
     #                                                                params.name_prefix_for_similarity_saved_model,
     #                                                                 stage=1)
-
 
     optimizer_for_similarity_learning = optim.Adam(similarity_learning_network.parameters(),
                                                    lr=params.learning_rate_for_similarity)
@@ -241,50 +231,82 @@ def visual_similarity_learning(network, train_loader, test_loader):
 
     print('Recover similarity network before the 2 stage')
     similarity_learning_network = utils.load_network_from_checkpoint(network=similarity_learning_network,
-                                                                  epoch=params.default_recovery_epoch_for_similarity,
-                                                                    name_prefix_for_saved_model=
-                                                                    params.name_prefix_for_similarity_saved_model,
+                                                                     epoch=params.default_recovery_epoch_for_similarity,
+                                                                     name_prefix_for_saved_model=
+                                                                     params.name_prefix_for_similarity_saved_model,
                                                                      stage=1)
-    #for epoch in range(0, 100, 10):
+    # for epoch in range(0, 100, 10):
     #    print('Recover similarity network before the 2 stage ---- epoch %d', epoch)
     #    similarity_learning_network = utils.load_network_from_checkpoint(network=similarity_learning_network,
     #                                                                 epoch=epoch,
     #                                                                 name_prefix_for_saved_model=
     #                                                                 params.name_prefix_for_similarity_saved_model,
     #                                                                 stage=1)
-    #    print('Evaluation on train after the stage 1')
-    #    recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
-    #                                                   all_outputs=all_outputs_train,
-    #                                                   all_labels=all_labels_train,
-    #                                                   similarity_network=similarity_learning_network)
-    #    print('Evaluation on test after the stage 1')
-    #    recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
-    #                                                   all_outputs=all_outputs_test,
-    #                                                   all_labels=all_labels_test,
-    #                                                   similarity_network=similarity_learning_network)
+
+    print('Evaluation on train after the stage 1')
+    recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
+                                                       all_outputs=all_outputs_train,
+                                                       all_labels=all_labels_train,
+                                                       similarity_network=similarity_learning_network)
+
+    # reorder outputs and labels for histogramm loss for UKB!!!!!!!
+    if params.sampling_for_similarity:
+        all_labels_train, indices = torch.sort(all_labels_train)
+        print('all_labels_train sorted ', all_labels_train[:25])
+        #print('indices ', indices)
+        all_outputs_train = all_outputs_train[indices.cuda()]
+        print('all_outputs_train sorted ', all_outputs_train)
+
+    print('Evaluation on train after the stage 1 and reordering!')
+    recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
+                                                       all_outputs=all_outputs_train,
+                                                       all_labels=all_labels_train,
+                                                       similarity_network=similarity_learning_network)
+
+
+
+
+    print('Evaluation on test after the stage 1')
+    recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
+                                                       all_outputs=all_outputs_test,
+                                                       all_labels=all_labels_test,
+                                                       similarity_network=similarity_learning_network)
+    # reorder outputs and labels for histogramm loss for UKB!!!!!!!
+    if params.sampling_for_similarity:
+        all_labels_test, indices = torch.sort(all_labels_test)
+        print('all_labels_test sorted ', all_labels_test)
+        #print('indices ', indices)
+        all_outputs_test = all_outputs_test[indices.cuda()]
+        print('all_outputs_test sorted ', all_outputs_test)
+    print('Evaluation on test after the stage 1 and reordering!')
+    recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
+                                                       all_outputs=all_outputs_test,
+                                                       all_labels=all_labels_test,
+                                                       similarity_network=similarity_learning_network)
 
     # *********
     # Stage 2
     # *********
     if params.learn_stage_2:
         metric_learning.metric_learning(all_outputs_train, all_labels_train,
-                                    representation_network,
-                                    similarity_network=similarity_learning_network,
-                                    start_epoch=0,
-                                    optimizer=optimizer_for_similarity_learning,
-                                    lr_scheduler=exp_lr_scheduler,
-                                    criterion=nn.MSELoss(),
-                                    stage=2,
-                                    all_outputs_test=all_outputs_test, all_labels_test=all_labels_test,
-                                    cosine_similarity_matrix=cosine_similarity_matrix,
-                                    signs_matrix=signs_matrix
-                                    )
+                                        representation_network,
+                                        similarity_network=similarity_learning_network,
+                                        start_epoch=0,
+                                        optimizer=optimizer_for_similarity_learning,
+                                        lr_scheduler=exp_lr_scheduler,
+                                        criterion=nn.MSELoss(),
+                                        stage=2,
+                                        all_outputs_test=all_outputs_test, all_labels_test=all_labels_test,
+                                        cosine_similarity_matrix=cosine_similarity_matrix,
+                                        signs_matrix=signs_matrix
+                                        )
     print('Recover similarity network after the 2 stage')
     similarity_learning_network = utils.load_network_from_checkpoint(network=similarity_learning_network,
                                                                      epoch=params.default_recovery_epoch_for_similarity,
                                                                      name_prefix_for_saved_model=
                                                                      params.name_prefix_for_similarity_saved_model,
-                                                                     stage=2)
+                                                                     stage=2,
+                                                                     loss_function_name=params.loss_for_similarity)
     print('Evaluation on train after the stage 2')
     recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
                                                        all_outputs=all_outputs_train,
@@ -298,21 +320,18 @@ def visual_similarity_learning(network, train_loader, test_loader):
 
 
 def main():
-    pr = cProfile.Profile()
-    pr.enable()
-
     ##################################################################
     #
     # Loading data images
     #
     ##################################################################
     print('Loading data ' + params.dataset)
-
-    if params.dataset == 'cifar':
+    train_loader, test_loader = None, None
+    if params.dataset == 'cifar' and (params.learn_classification or params.learn_representation):
         train_loader_for_classification, test_loader_for_classification = cifar.download_CIFAR100_for_classification()
         train_loader, test_loader = cifar.download_CIFAR100_for_representation()
 
-    if params.dataset == 'birds':
+    if params.dataset == 'birds' and (params.learn_classification or params.learn_representation):
         train_loader_for_classification, test_loader_for_classification = \
             birds.download_BIRDS_for_classification(data_folder='CUB_200_2011')
         train_loader, test_loader = birds.download_BIRDS_for_representation(data_folder='CUB_200_2011')
@@ -326,9 +345,10 @@ def main():
     ##################################################################
 
     print('Create a network ' + params.network)
-    if params.network == 'small-resnet':
+    network = None
+    if params.network == 'small-resnet' and (params.learn_classification or params.learn_representation):
         network = small_resnet_for_cifar.small_resnet_for_cifar(num_classes=params.num_classes, n=3).cuda()
-    if params.network == 'resnet-50':
+    if params.network == 'resnet-50' and (params.learn_classification or params.learn_representation):
         network = models.resnet50(pretrained=True).cuda()
 
         num_ftrs = network.fc.in_features
@@ -344,9 +364,11 @@ def main():
     # Do classification pretrainig and representations learning
     #
     ##################################################################
-    classification_pretrainig(network, train_loader_for_classification, test_loader_for_classification)
+    if params.learn_classification:
+        classification_pretrainig(network, train_loader_for_classification, test_loader_for_classification)
 
-    representations_learning(network, train_loader, test_loader)
+    if params.learn_representation:
+        representations_learning(network, train_loader, test_loader)
 
     ##################################################################
     #
@@ -354,13 +376,6 @@ def main():
     #
     ##################################################################
     visual_similarity_learning(network, train_loader, test_loader)
-
-    pr.disable()
-    s = io.StringIO()
-    sortby = 'cumulative'
-    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print(s.getvalue())
 
 
 if __name__ == '__main__':

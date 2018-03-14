@@ -1,7 +1,5 @@
 import torch
 from torch.autograd import Variable
-import numpy as np
-import torchtricks.criterion
 
 
 # Learning Deep Embeddings with Histogram Loss
@@ -88,6 +86,7 @@ class HistogramLossForSimilarity(torch.nn.Module):
         #print('classes_eq ', classes_eq)
         s_inds = torch.triu(torch.ones(dists.size()), 1).byte()
         s_inds = s_inds.cuda()
+        #print('s_inds', s_inds)
         pos_inds = classes_eq[s_inds].repeat(self.tsize, 1)
         neg_inds = ~classes_eq[s_inds].repeat(self.tsize, 1)
         pos_size = classes_eq[s_inds].sum()

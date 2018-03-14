@@ -10,10 +10,6 @@ from sampling import UniformSampler
 
 
 def get_filenames_and_labels(data_folder, test_or_train='test'):
-    f_i = open(data_folder + '/CUB_200_2011/images.txt', "r")
-    f_l = open(data_folder + '/CUB_200_2011/image_class_labels.txt', "r")
-    lines_i = f_i.readlines()
-    lines_l = f_l.readlines()
     images_paths = []
     images_indices = []
     images_labels = []
@@ -22,31 +18,46 @@ def get_filenames_and_labels(data_folder, test_or_train='test'):
     train_images = []
     test_images = []
 
+    f_l = open(data_folder + 'labels_natasha_omniglot_%s' % test_or_train, "r", encoding="utf-8")
+    lines_l = f_l.readlines()
+
+    all_possible_labels = []
     for x in lines_l:
-        label = int(x.split(' ')[1])
-        images_labels.append(label)
-        if test_or_train == 'train' and label <= 100:
-            train_labels.append(label)
-        if test_or_train == 'test' and label > 100:
-            test_labels.append(label)
-    images_labels = np.array(images_labels)
+        x = x.replace('\n', '')
+        labels = x.split(' ')[1:]
+        images_labels.append(labels)
+        all_possible_labels.extend(labels)
 
-    print('images_labels.shape ', images_labels.shape)
-    for x in lines_i:
-        path = data_folder + '/CUB_200_2011/images/' + test_or_train + '100/' + (x.split(' ')[1]).strip()
-        index = int(x.split(' ')[0]) - 1
+    # convert string labels to numeric
+    all_possible_labels = np.asarray(list(set(all_possible_labels)))
+    for labels in images_labels:
+        for i, label in enumerate(labels):
+            #print('np.where(all_possible_labels == str(label))[0][0] ', np.where(all_possible_labels == str(label))[0][0].dtype)
+            labels[i] = (np.where(all_possible_labels == str(label))[0][0])
+            #print('labels[i]', labels[i].dtype)
+        labels = np.array(labels)
 
-        if test_or_train == 'train' and images_labels[index] <= 100 and index <= 5863:
-            images_paths.append(path)
-            images_indices.append(index)
+
+    for i in range(100000):
+        path = data_folder + ('natasha_omniglot_%s/%d.jpg' % (test_or_train, i))
+        images_paths.append(path)
+        images_indices.append(i)
+        if test_or_train == 'train':
             train_images.append(path)
-        if test_or_train == 'test' and images_labels[index] > 100 and index > 5836:
-            images_paths.append(path)
-            images_indices.append(index)
+            train_labels.append(images_labels[i])
+        else:    
+            test_labels.append(images_labels[i])
             test_images.append(path)
+            
+    if test_or_train == 'train':
+        images_labels = train_labels
+    else:
+        images_labels = test_labels
 
-    f_i.close()
-    f_l.close()
+    images_labels = np.array(images_labels)
+    train_labels = np.array(train_labels)
+    test_labels = np.array(test_labels)
+    print('images_labels.shape ', images_labels.shape)
 
     images_indices = np.array(images_indices)
     train_images = np.array(train_images)
@@ -55,7 +66,7 @@ def get_filenames_and_labels(data_folder, test_or_train='test'):
     return images_indices, images_labels, images_paths, train_images, train_labels, test_images, test_labels
 
 
-class BIRDS100(Dataset):
+class Omniglot(Dataset):
     def __init__(self, data_folder, transform=None, test_or_train='test'):
         self.data_folder = data_folder
         self.transform = transform
@@ -125,11 +136,11 @@ def create_transformations_for_test_and_train():
 def create_new_train_and_test_datasets(transform_train, transform_test, data_folder):
     # create new dataset for representational learning
     # where in train we have first 100 classes and in test the remaining 100
-    new_train_dataset = BIRDS100(data_folder=data_folder,
+    new_train_dataset = Omniglot(data_folder=data_folder,
                                  transform=transform_train,
                                  test_or_train='train'
                                  )
-    new_test_dataset = BIRDS100(data_folder=data_folder,
+    new_test_dataset = Omniglot(data_folder=data_folder,
                                 transform=transform_test,
                                 test_or_train='test'
                                 )
@@ -142,46 +153,26 @@ def create_new_train_and_test_datasets(transform_train, transform_test, data_fol
     return new_test_dataset, new_train_dataset
 
 
-def download_BIRDS_for_classification(data_folder):
-    transform_test, transform_train = create_transformations_for_test_and_train()
-
-    test_dataset_for_classification, train_dataset_for_classification = create_new_train_and_test_datasets(
-        transform_train,
-        transform_test,
-        data_folder)
-
-    train_loader_for_classification = data.DataLoader(train_dataset_for_classification,
-                                                      batch_size=params.batch_size_for_classification,
-                                                      shuffle=True,
-                                                      num_workers=2)
-    test_loader_for_classification = data.DataLoader(train_dataset_for_classification,  # here for preclassification
-                                                     # we just take train and test sets the same
-                                                     # containing first 100 classes
-                                                     batch_size=params.batch_size_for_classification,
-                                                     shuffle=False,
-
-                                                     num_workers=2)
-
-    print('new_train_dataset_for_classification ', train_dataset_for_classification.__len__())
-    print('new_test_dataset_for_classification', test_dataset_for_classification.__len__())
-
-    return train_loader_for_classification, test_loader_for_classification
-
-
-def download_BIRDS_for_representation(data_folder):
+def download_Omniglot_for_representation(data_folder):
     transform_train, transform_test = create_transformations_for_test_and_train()
     new_test_dataset, new_train_dataset = create_new_train_and_test_datasets(transform_train, transform_test,
                                                                              data_folder)
 
+    ###########################
+    #
+    # Attention! Here we use special UNIFORM SAMPLER!
+    #
+    ###########################
     train_loader = data.DataLoader(new_train_dataset,
                                    batch_sampler=BatchSampler(
                                        sampler=UniformSampler(new_train_dataset,
-                                                              batch_size=params.batch_size_for_representation,
+                                                              batch_size=params.batch_size_for_binary_classification,
                                                               number_of_samples_with_the_same_label_in_the_batch=
-                                                              params.number_of_samples_with_the_same_label_in_the_batch),
-                                       batch_size=params.batch_size_for_representation,
+                                                              params.number_of_samples_with_the_same_label_in_the_batch_for_binary,
+                                                              several_labels=True),
+                                       batch_size=params.batch_size_for_binary_classification,
                                        drop_last=True),
-                                   num_workers=2)
+                                   num_workers=8)
     print('train_loader.batch_size = ', train_loader.batch_size,
           ' train_loader.batch_sampler.batch_size =', train_loader.batch_sampler.batch_size,
 
@@ -202,5 +193,8 @@ def download_BIRDS_for_representation(data_folder):
 
     print('new_train_dataset ', new_train_dataset.__len__())
     print('new_test_dataset ', new_test_dataset.__len__())
+    print('new_train_dataset.images_paths', new_train_dataset.images_paths)
+    print('new_train_dataset.images_labels', new_train_dataset.images_labels)
+    print('ful batch size = ', len(new_train_dataset.test_labels))
 
     return train_loader, test_loader

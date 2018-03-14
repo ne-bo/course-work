@@ -52,7 +52,7 @@ skip_step = 100
 
 name_prefix_for_saved_model_for_classification = 'model-cl-'
 name_prefix_for_saved_model_for_representation = 'model-rp-'
-name_prefix_for_similarity_saved_model = 'similarity-model-cosine-without-sampling'
+name_prefix_for_similarity_saved_model = 'similarity-model-cosine-sampling'
 
 mode_classification = 'classification'
 mode_representation = 'representation'
@@ -79,5 +79,24 @@ learn_representation = False
 
 recover_representation_net_before_similarity = False
 default_recovery_epoch_for_similarity = 100
-learn_stage_1 = True
-learn_stage_2 = True
+learn_stage_1 = False
+learn_stage_2 = False
+sampling_for_similarity = True
+loss_for_similarity = 'delta' # possible values 'histogramm', 'margin', 'delta'
+
+
+
+
+##############################################################################
+#
+# Binary classification parameters
+#
+##############################################################################
+
+default_recovery_epoch_for_binary_classification = 100
+learning_rate_for_binary_classification = 0.01
+batch_size_for_binary_classification = 64
+number_of_samples_with_the_same_label_in_the_batch_for_binary = (batch_size_for_binary_classification + 1)/2
+momentum_for_binary_classification = 0.9
+recover_binary_classification = False
+name_prefix_for_saved_model_for_binary_classification = 'binary'

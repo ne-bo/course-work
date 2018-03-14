@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import shutil
-import params
+
 
 # functions to show an image
 def imshow(img):
@@ -30,13 +29,13 @@ def load_network_and_optimizer_from_checkpoint(network, optimizer, epoch, name_p
     return network, optimizer
 
 
-def load_network_from_checkpoint(network, epoch, name_prefix_for_saved_model, stage=None):
+def load_network_from_checkpoint(network, epoch, name_prefix_for_saved_model, stage=None, loss_function_name=''):
     # optionally resume from a checkpoint
     print("=> loading checkpoint '{}'")
     if stage != None:
-        checkpoint = torch.load(name_prefix_for_saved_model + '-%d-%d' % (epoch, stage))
+        checkpoint = torch.load(name_prefix_for_saved_model + '-%d-%d%s' % (epoch, stage, loss_function_name))
     else:
         checkpoint = torch.load(name_prefix_for_saved_model + '-%d' % epoch)
     network.load_state_dict(checkpoint['state_dict'])
-    print("=> loaded checkpoint '{}' (epoch {%d})" % epoch)
+    print("=> loaded checkpoint '{%s}' (epoch {%d}) stage = %d" % (name_prefix_for_saved_model, epoch, stage))
     return network

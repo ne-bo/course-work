@@ -1,11 +1,7 @@
-import math
-import torch.nn as nn
-import torch
-import torch.nn.functional as F
-from torch.nn import Parameter
 import numpy as np
-
-import params
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 
 class AllPairs(nn.Module):
