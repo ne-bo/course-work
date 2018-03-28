@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 import metric_learning_utils
 import params
+import utils
 
 
 def test_for_classification(test_loader, network):
@@ -212,3 +213,42 @@ def partial_test_for_representation(k, all_outputs, all_labels, similarity_netwo
     print('recall_at_', k, ' of the network on the ', total_number_of_batches, ' batches: %f ' % recall_at_k)
 
     return recall_at_k
+
+
+from sklearn.metrics import f1_score
+
+
+def test_for_binary_classification(test_loader, network):
+    f1 = 0.0
+    number_of_small_matrices = 0.0
+    for data_1 in test_loader:
+        for data_2 in test_loader:
+            inputs_1, labels_1 = data_1
+            inputs_2, labels_2 = data_2
+            # we need pairs of images in our batch
+            input_pairs = Variable(torch.cat((inputs_1.view(params.batch_size_for_binary_classification, -1),
+                                              inputs_2.view(params.batch_size_for_binary_classification, -1))))
+            # and +1/-1 labels matrix
+
+            labels_matrix = Variable(utils.get_labels_matrix(labels_1, labels_2))
+
+            # here we should create input pair for the network from just inputs
+            # print('input_pairs', input_pairs)
+            outputs = network(input_pairs).data.numpy()
+
+            ground_truth = labels_matrix.long().view(-1, 1).squeeze().data.numpy()
+
+            #print('outputs ', outputs)
+            #print('ground_truth ', ground_truth)
+            outputs[np.where(outputs[:, 0] >= 0.5)[0], 0] = 1
+            outputs[np.where(outputs[:, 0] < 0.5)[0], 0] = 0
+            #if 1 in outputs[:, 0]:
+            #    print('outputs ', outputs)
+            f1 = f1 + f1_score(ground_truth, outputs[:, 0])
+            number_of_small_matrices = number_of_small_matrices + 1.0
+        average_f1 =  f1/number_of_small_matrices
+        print('average f1 = ', average_f1)
+        return average_f1
+
+
+

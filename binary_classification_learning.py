@@ -7,16 +7,9 @@ import visdom
 from torch.autograd import Variable
 
 import params
+import test
 import utils
-
-
-def get_labels_matrix(labels_list_1, labels_list_2):
-    matrix = torch.from_numpy(np.zeros((labels_list_1.shape[0], labels_list_2.shape[0])))
-    for i, labels1 in enumerate(labels_list_1):
-        for j, labels2 in enumerate(labels_list_2):
-            matrix[i, j] = int(np.in1d(labels1, labels2).any())
-    print('matrix ', matrix)
-    return matrix
+from utils import get_labels_matrix
 
 
 def binary_learning(train_loader,
@@ -28,72 +21,79 @@ def binary_learning(train_loader,
                     lr_scheduler):
     vis = visdom.Visdom()
     r_loss = []
-    r_recall = []
+    r_average_f1 = []
     iterations = []
     epochs = []
     total_iteration = 0
 
-    loss_plot = vis.line(Y=np.zeros(1), X=np.zeros(1))
-    recall_plot = vis.line(Y=np.zeros(1), X=np.zeros(1))
+    options = dict(legend=['loss'])
+    loss_plot = vis.line(Y=np.zeros(1), X=np.zeros(1), opts=options)
+    options = dict(legend=['average_f1'])
+    average_f1_plot = vis.line(Y=np.zeros(1), X=np.zeros(1), opts=options)
 
     for epoch in range(start_epoch, params.number_of_epochs_for_metric_learning):
         lr_scheduler.step(epoch=epoch)
         print('current_learning_rate =', optimizer.param_groups[0]['lr'], ' ', datetime.datetime.now())
 
-        for i, data in enumerate(train_loader, 0):
+        i = 0
+        for data in train_loader:
+            i = i + 1
             inputs, labels = data
-
+            # print('inputs ', inputs) # batch_sizex3x64x64
             # we need pairs of images in our batch
-            input_pairs = Variable(torch.cat((inputs.view(params.batch_size_for_binary_classification, 105 * 105, 1),
-                                              inputs.view(params.batch_size_for_binary_classification, 105 * 105, 1))))
+            # print('inputs, labels ', labels)
+            input_pairs = Variable(torch.cat((inputs.view(params.batch_size_for_binary_classification, -1),
+                                              inputs.view(params.batch_size_for_binary_classification, -1))))
             # and +1/-1 labels matrix
 
-            labels_matrix =  Variable(get_labels_matrix(labels, labels))
+            labels_matrix = Variable(get_labels_matrix(labels, labels))
             # zero the parameter gradients
             optimizer.zero_grad()
 
             # forward + backward + optimize
             # here we should create input pair for the network from just inputs
+            # print('input_pairs', input_pairs)
             outputs = network(input_pairs)
 
-            loss = criterion(outputs, labels_matrix)
+            # print('outputs ', outputs)
+            # print('labels_matrix ', labels_matrix.long().view(-1, 1).squeeze())
+
+            loss = criterion(outputs, labels_matrix.long().view(-1, 1).squeeze())
 
             loss.backward()
             optimizer.step()
 
             # print statistics
             current_batch_loss = loss.data[0]
-            print('[ephoch %d, itteration in the epoch %5d] loss: %.30f' %
-                          (epoch + 1, i + 1, current_batch_loss))
-            r_loss.append(current_batch_loss)
+            if i % 1000 == 0:  # print every 2000 mini-batches
+                print('[ephoch %d, itteration in the epoch %5d] loss: %.30f' % (epoch + 1, i + 1, current_batch_loss))
 
-        iterations.append(total_iteration + i)
-        options = dict(legend=['loss'])
-        loss_plot = vis.line(Y=np.array(r_loss), X=np.array(iterations),
-                             # , update='append',
-                             win=loss_plot, opts=options)
+                r_loss.append(current_batch_loss)
+                iterations.append(total_iteration + i)
 
-        if epoch % 10 == 0:
+                options = dict(legend=['loss'])
+                loss_plot = vis.line(Y=np.array(r_loss), X=np.array(iterations), win=loss_plot, opts=options)
+
+        if epoch % 1 == 0:
             epochs.append(epoch)
             # print the quality metric
-            # Here evaluation is heavy so we do it only every 10 epochs
-            # print('similarity_network ', similarity_network)
             gc.collect()
 
-            print('Evaluation on train internal')
-            recall_at_k = 0.0
-            r_recall.append(recall_at_k)
-            options = dict(legend=['recall'])
-            recall_plot = vis.line(Y=np.array(r_recall), X=np.array(epochs),
-                                 # , update='append',
-                                 win=recall_plot, opts=options)
+            print('Evaluation on train internal', datetime.datetime.now())
+            average_f1 = test.test_for_binary_classification(train_loader, network)
+            r_average_f1.append(average_f1)
+            options = dict(legend=['average_f1'])
+            average_f1_plot = vis.line(Y=np.array(r_average_f1), X=np.array(epochs), win=average_f1_plot, opts=options)
 
-            print('Evaluation on test internal')
-            recall_at_k = 0.0
+            print('Evaluation on test internal', datetime.datetime.now())
+            average_f1 = test.test_for_binary_classification(test_loader, network)
 
-            utils.save_checkpoint(network=network,
-                                 optimizer=optimizer,
-                                  filename=params.name_prefix_for_similarity_saved_model + '-%d' % (epoch),
-                                  epoch=epoch)
+            utils.save_checkpoint(
+                network=network,
+                optimizer=optimizer,
+                filename=params.name_prefix_for_saved_model_for_binary_classification + '-%d' % (epoch),
+                epoch=epoch
+            )
+        total_iteration = total_iteration + i
 
     print('Finished Training for binary classification')

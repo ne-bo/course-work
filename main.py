@@ -20,27 +20,31 @@ import test
 import utils
 
 
-def debug_images_show(train_loader_for_classification):
+def debug_images_show(loader):
     ##################################################################
     #
     # Images show for debug
     #
     ##################################################################
     # get some random training images
-    dataiter = iter(train_loader_for_classification)
+    dataiter = iter(loader)
     images, labels = dataiter.next()
     # show images
     print("images.shape ", images.shape)
     utils.imshow(torchvision.utils.make_grid(images))  # images = Tensor of shape (B x C x H x W)
     # print labels
+    # todo python 3.6 has so-called f-strings. This is like in Groovy when you can insert the value directly into print
     print(' '.join('%5s' % labels[j] for j in range(params.batch_size)))
 
 
 def classification_pretrainig(network, train_loader_for_classification, test_loader_for_classification):
     restore_epoch = params.default_recovery_epoch_for_classification
-    optimizer = optim.SGD(network.parameters(),
-                          lr=params.learning_rate_for_classification,
-                          momentum=params.momentum_for_classification)
+    optimizer = optim.SGD(
+        network.parameters(),
+        lr=params.learning_rate_for_classification,
+        momentum=params.momentum_for_classification
+    )
+    # todo Extract methods is a useful refactoring especialy for code parts with such big comments
     ##################################################################
     #
     # Optional recovering from the saved file
@@ -49,20 +53,23 @@ def classification_pretrainig(network, train_loader_for_classification, test_loa
     if params.recover_classification:
         print('Restore for classification pre-training')
         restore_epoch = params.default_recovery_epoch_for_classification
-        network, optimizer = utils.load_network_and_optimizer_from_checkpoint(network=network,
-                                                                              optimizer=optimizer,
-                                                                              epoch=restore_epoch,
-                                                                              name_prefix_for_saved_model=
-                                                                              params.name_prefix_for_saved_model_for_classification)
+        network, optimizer = utils.load_network_and_optimizer_from_checkpoint(
+            network=network,
+            optimizer=optimizer,
+            epoch=restore_epoch,
+            name_prefix_for_saved_model=params.name_prefix_for_saved_model_for_classification
+        )
         start_epoch = restore_epoch
     else:
         start_epoch = 0
 
     print('Create a multi_lr_scheduler')
     # Decay LR by a factor of 0.1 every 10 epochs
-    multi_lr_scheduler = lr_scheduler.MultiStepLR(optimizer,
+    multi_lr_scheduler = lr_scheduler.MultiStepLR(
+        optimizer,
                                                   milestones=[82, 123],
-                                                  gamma=0.1)
+                                                  gamma=0.1
+    )
 
     ##################################################################
     #
@@ -71,7 +78,8 @@ def classification_pretrainig(network, train_loader_for_classification, test_loa
     ##################################################################
     if params.learn_classification:
         print('Start classification pretraining')
-        learning.learning_process(train_loader=train_loader_for_classification,
+        learning.learning_process(
+            train_loader=train_loader_for_classification,
                                   network=network,
                                   criterion=nn.CrossEntropyLoss(),
                                   test_loader=test_loader_for_classification,
@@ -79,7 +87,8 @@ def classification_pretrainig(network, train_loader_for_classification, test_loa
                                   mode=params.mode_classification,
                                   optimizer=optimizer,
                                   start_epoch=start_epoch,
-                                  lr_scheduler=multi_lr_scheduler)
+                                  lr_scheduler=multi_lr_scheduler
+        )
 
 
 def representations_learning(network, train_loader, test_loader):
@@ -88,13 +97,16 @@ def representations_learning(network, train_loader, test_loader):
     # Optional recovering from the saved file
     #
     ##################################################################
+    # todo look carefully in control flow ifs, there are too many of them and they duplicate each other
     if params.recover_classification_net_before_representation:
         print('Restoring before representational training')
         restore_epoch = params.default_recovery_epoch_for_classification
-        network = utils.load_network_from_checkpoint(network=network,
+        network = utils.load_network_from_checkpoint(
+            network=network,
                                                      epoch=restore_epoch,
                                                      name_prefix_for_saved_model=
-                                                     params.name_prefix_for_saved_model_for_classification)
+                                                     params.name_prefix_for_saved_model_for_classification
+        )
 
     ##################################################################
     #
@@ -104,8 +116,11 @@ def representations_learning(network, train_loader, test_loader):
 
     print('Representational training')
 
-    optimizer_for_representational_learning = optim.Adam(network.parameters(),
-                                                         lr=params.learning_rate_for_representation)  # ,
+
+    optimizer_for_representational_learning = optim.Adam(
+        network.parameters(),
+                                                         lr=params.learning_rate_for_representation
+    )  # ,
     # momentum=params.momentum)
 
     if params.recover_representation_learning:
@@ -160,10 +175,14 @@ def visual_similarity_learning(network, train_loader, test_loader):
 
     print('Restoring representation network before similarity training')
     if params.recover_representation_net_before_similarity:
-        representation_network = utils.load_network_from_checkpoint(network=network,
+        representation_network = utils.load_network_from_checkpoint(
+            network=network,
                                                                     epoch=params.default_recovery_epoch_for_representation,
                                                                     name_prefix_for_saved_model=
-                                                                    params.name_prefix_for_saved_model_for_representation)
+                                                                    params.name_prefix_for_saved_model_for_representation
+        )
+
+
         representation_length = next(representation_network.fc.modules()).fc.out_features
         print('representation_length = ', representation_length)
         all_outputs_train, all_labels_train = \
@@ -253,7 +272,7 @@ def visual_similarity_learning(network, train_loader, test_loader):
     if params.sampling_for_similarity:
         all_labels_train, indices = torch.sort(all_labels_train)
         print('all_labels_train sorted ', all_labels_train[:25])
-        #print('indices ', indices)
+        # print('indices ', indices)
         all_outputs_train = all_outputs_train[indices.cuda()]
         print('all_outputs_train sorted ', all_outputs_train)
 
@@ -262,9 +281,6 @@ def visual_similarity_learning(network, train_loader, test_loader):
                                                        all_outputs=all_outputs_train,
                                                        all_labels=all_labels_train,
                                                        similarity_network=similarity_learning_network)
-
-
-
 
     print('Evaluation on test after the stage 1')
     recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
@@ -275,7 +291,7 @@ def visual_similarity_learning(network, train_loader, test_loader):
     if params.sampling_for_similarity:
         all_labels_test, indices = torch.sort(all_labels_test)
         print('all_labels_test sorted ', all_labels_test)
-        #print('indices ', indices)
+        # print('indices ', indices)
         all_outputs_test = all_outputs_test[indices.cuda()]
         print('all_outputs_test sorted ', all_outputs_test)
     print('Evaluation on test after the stage 1 and reordering!')
@@ -327,6 +343,7 @@ def main():
     ##################################################################
     print('Loading data ' + params.dataset)
     train_loader, test_loader = None, None
+    # todo python has enums, you can use them instead of string like 'cifar'
     if params.dataset == 'cifar' and (params.learn_classification or params.learn_representation):
         train_loader_for_classification, test_loader_for_classification = cifar.download_CIFAR100_for_classification()
         train_loader, test_loader = cifar.download_CIFAR100_for_representation()

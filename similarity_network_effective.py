@@ -5,14 +5,20 @@ import torch.nn.functional as F
 
 
 class AllPairs(nn.Module):
-    def __init__(self, in_features, out_features, l1_initialization=False):
+    def __init__(self, in_features, out_features, l1_initialization=False, cuda=True):
         super(AllPairs, self).__init__()
         self.l1_initialization = l1_initialization
         self.in_features = in_features
         self.out_features = out_features
-        self.fc1 = nn.Linear(self.in_features, self.in_features).cuda()
-        self.fc2 = nn.Linear(self.in_features, self.in_features).cuda()
-        self.fc3 = nn.Linear(self.in_features, self.out_features).cuda()
+
+        self.fc1 = nn.Linear(self.in_features, self.in_features)
+        self.fc2 = nn.Linear(self.in_features, self.in_features)
+        self.fc3 = nn.Linear(self.in_features, self.out_features)
+        if cuda:
+            self.fc1 = self.fc1.cuda()
+            self.fc2 = self.fc2.cuda()
+            self.fc3 = self.fc3.cuda()
+
         if self.l1_initialization:
             self.fc1.weight.data = torch.from_numpy(np.eye(self.fc1.weight.size(0))).float()
             self.fc1.bias.data.fill_(0.0)
@@ -48,7 +54,7 @@ class AllPairs(nn.Module):
 
 
 class EffectiveSimilarityNetwork(nn.Module):
-    def __init__(self, number_of_input_features, l1_initialization=False):
+    def __init__(self, number_of_input_features, l1_initialization=False, number_of_output_neurons=1, cuda=True):
         super(EffectiveSimilarityNetwork, self).__init__()
 
         ##################################################################
@@ -69,7 +75,7 @@ class EffectiveSimilarityNetwork(nn.Module):
         # parameters for second fully connected layer
         self.number_of_hidden_neurons_for_2_fully_connected = 2048
 
-        self.number_of_output_neurons = 1
+        self.number_of_output_neurons = number_of_output_neurons
 
         ##################################################################
         #
@@ -78,7 +84,8 @@ class EffectiveSimilarityNetwork(nn.Module):
         ##################################################################
         self.fc1 = AllPairs(in_features=self.number_of_input_features,
                             out_features=self.number_of_hidden_neurons_for_1_fully_connected,
-                            l1_initialization=l1_initialization)
+                            l1_initialization=l1_initialization,
+                            cuda=cuda)
 
         self.fc2 = nn.Linear(self.number_of_hidden_neurons_for_1_fully_connected,
                              self.number_of_hidden_neurons_for_2_fully_connected)

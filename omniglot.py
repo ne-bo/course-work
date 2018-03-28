@@ -25,30 +25,37 @@ def get_filenames_and_labels(data_folder, test_or_train='test'):
     for x in lines_l:
         x = x.replace('\n', '')
         labels = x.split(' ')[1:]
+        while len(labels) < 3:
+            labels.append('1000000')
+            #print('labels appended ', labels)
         images_labels.append(labels)
         all_possible_labels.extend(labels)
 
     # convert string labels to numeric
-    all_possible_labels = np.asarray(list(set(all_possible_labels)))
+    # here if an image has less then 3 labels the label 0 will be addaed up to 3 labels
+    # for example if the image has labels 34 and 22 then the final set of labels will be 34, 22, 0
+    # if the image has only 1 character and label 2 then the final set of labels will be  2,  0, 0
+    all_possible_labels = np.sort(np.asarray(list(set(all_possible_labels))))
+    # print('all_possible_labels', all_possible_labels)
     for labels in images_labels:
         for i, label in enumerate(labels):
-            #print('np.where(all_possible_labels == str(label))[0][0] ', np.where(all_possible_labels == str(label))[0][0].dtype)
+            # print('np.where(all_possible_labels == str(label))[0][0] ', np.where(all_possible_labels == str(label))[0][0].dtype)
             labels[i] = (np.where(all_possible_labels == str(label))[0][0])
-            #print('labels[i]', labels[i].dtype)
+            # print('labels[i]', labels[i].dtype)
         labels = np.array(labels)
 
-
-    for i in range(100000):
+    for i in range(10000):
         path = data_folder + ('natasha_omniglot_%s/%d.jpg' % (test_or_train, i))
         images_paths.append(path)
         images_indices.append(i)
+        images_labels[i] = np.array(images_labels[i])
         if test_or_train == 'train':
             train_images.append(path)
             train_labels.append(images_labels[i])
-        else:    
+        else:
             test_labels.append(images_labels[i])
             test_images.append(path)
-            
+
     if test_or_train == 'train':
         images_labels = train_labels
     else:
@@ -67,7 +74,7 @@ def get_filenames_and_labels(data_folder, test_or_train='test'):
 
 
 class Omniglot(Dataset):
-    def __init__(self, data_folder, transform=None, test_or_train='test'):
+    def __init__(self, data_folder, transform=None, test_or_train='test', image_size = 32):
         self.data_folder = data_folder
         self.transform = transform
         if test_or_train == 'train':
@@ -82,6 +89,7 @@ class Omniglot(Dataset):
         self.test_images, \
         self.test_labels = get_filenames_and_labels(data_folder,
                                                     test_or_train=test_or_train)
+        self.image_size = image_size
 
         print('self.images_labels ', self.images_labels)
 
@@ -92,57 +100,43 @@ class Omniglot(Dataset):
             return len(self.test_images)
 
     def __getitem__(self, index):
-        transform_for_correction = transforms.Compose([
-            transforms.ToPILImage(),
-        ])
         if self.train:
             image = self.transform(Image.open(self.train_images[index]))
-            label = self.train_labels[index]
+            # label = self.train_labels[index]
+            label = self.images_labels[index]
         else:
             image = self.transform(Image.open(self.test_images[index]))
-            label = self.test_labels[index]
-
-        if image.shape[0] == 1:
-            # print('Grayscale image is found! ', self.images_paths[index])
-            image = transform_for_correction(image)
-            image = transforms.ImageOps.colorize(image, (0, 0, 0), (255, 255, 255))
-            image = self.transform(image)
-            # print('new image.shape ', image.shape)
-
-        if image.shape[1] < params.initial_image_size or image.shape[2] < params.initial_image_size:
-            print('image is too small', image.shape)
-
+            # label = self.test_labels[index]
+            label = self.images_labels[index]
+        # print('image, label ', image, label)
         return image, label
 
 
-def create_transformations_for_test_and_train():
+def create_transformations_for_test_and_train(image_size):
     transform_train = transforms.Compose([
-        transforms.Scale(params.initial_image_scale_size),
-        transforms.RandomCrop(params.initial_image_size, padding=0),
+        transforms.Scale(image_size),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-
-        # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
     transform_test = transforms.Compose([
-        transforms.Scale(params.initial_image_scale_size),
-        transforms.CenterCrop(params.initial_image_size),
+        transforms.Scale(image_size),
         transforms.ToTensor(),
-        # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
     return transform_test, transform_train
 
 
-def create_new_train_and_test_datasets(transform_train, transform_test, data_folder):
+def create_new_train_and_test_datasets(transform_train, transform_test, data_folder, image_size):
     # create new dataset for representational learning
     # where in train we have first 100 classes and in test the remaining 100
     new_train_dataset = Omniglot(data_folder=data_folder,
                                  transform=transform_train,
-                                 test_or_train='train'
+                                 test_or_train='train',
+                                 image_size = 32
                                  )
     new_test_dataset = Omniglot(data_folder=data_folder,
                                 transform=transform_test,
-                                test_or_train='test'
+                                test_or_train='test',
+                                image_size = 32
                                 )
     print('len(new_train_dataset.train_images) ', len(new_train_dataset.train_images))
     print('len(new_train_dataset.test_images) ', len(new_train_dataset.test_images))
@@ -153,48 +147,52 @@ def create_new_train_and_test_datasets(transform_train, transform_test, data_fol
     return new_test_dataset, new_train_dataset
 
 
-def download_Omniglot_for_representation(data_folder):
-    transform_train, transform_test = create_transformations_for_test_and_train()
+def download_Omniglot_for_representation(data_folder, image_size):
+    transform_train, transform_test = create_transformations_for_test_and_train(image_size)
     new_test_dataset, new_train_dataset = create_new_train_and_test_datasets(transform_train, transform_test,
-                                                                             data_folder)
+                                                                             data_folder, image_size)
 
     ###########################
     #
     # Attention! Here we use special UNIFORM SAMPLER!
     #
     ###########################
-    train_loader = data.DataLoader(new_train_dataset,
-                                   batch_sampler=BatchSampler(
-                                       sampler=UniformSampler(new_train_dataset,
-                                                              batch_size=params.batch_size_for_binary_classification,
-                                                              number_of_samples_with_the_same_label_in_the_batch=
-                                                              params.number_of_samples_with_the_same_label_in_the_batch_for_binary,
-                                                              several_labels=True),
-                                       batch_size=params.batch_size_for_binary_classification,
-                                       drop_last=True),
-                                   num_workers=8)
-    print('train_loader.batch_size = ', train_loader.batch_size,
-          ' train_loader.batch_sampler.batch_size =', train_loader.batch_sampler.batch_size,
 
-          ' train_loader.dataset ', train_loader.dataset)
-    print('new_test_dataset.images_paths', new_test_dataset.images_paths)
-    print('new_test_dataset.images_labels', new_test_dataset.images_labels)
-    print('ful batch size = ', len(new_test_dataset.test_labels))
-    test_loader = data.DataLoader(new_test_dataset,
+    uniform_sampler = UniformSampler(
+        new_train_dataset,
+        batch_size=params.batch_size_for_binary_classification,
+        number_of_samples_with_the_same_label_in_the_batch=params.number_of_samples_with_the_same_label_in_the_batch_for_binary,
+        several_labels=True
+    )
+    print('uniform_sampler ', uniform_sampler)
+    batch_sampler = BatchSampler(
+            sampler=uniform_sampler,
+            batch_size=params.batch_size_for_binary_classification,
+            drop_last=True
+        )
+    print('batch_sampler ', batch_sampler)
 
-                                  # unfortunately we don't have enough memory to evaluate easily on FULL test
-                                  batch_size=params.batch_size_for_representation,
+    print('************************************************')
+    print('    Create train loared')
+    print('************************************************')
+    train_loader = data.DataLoader(
+        new_train_dataset,
+        batch_sampler=batch_sampler,
+        num_workers=8
+    )
 
-                                  drop_last=True, # we need to drop last batch because it can had length less than k
-                                  # and we won't be able to calculate recall at k
-                                  shuffle=True, # shuffle is extremely importatnt here because we take 10 neighbors
-                                  # out of 16 images in the batch
-                                  num_workers=2)
+    print('train_loader ', train_loader.__iter__().collate_fn)
+    print('************************************************')
+    print('    Create test loared')
+    print('************************************************')
 
-    print('new_train_dataset ', new_train_dataset.__len__())
-    print('new_test_dataset ', new_test_dataset.__len__())
-    print('new_train_dataset.images_paths', new_train_dataset.images_paths)
-    print('new_train_dataset.images_labels', new_train_dataset.images_labels)
-    print('ful batch size = ', len(new_train_dataset.test_labels))
+    test_loader = data.DataLoader(
+        new_test_dataset,
+        batch_size=params.batch_size_for_binary_classification,
+        drop_last=True,  # we need to drop last batch because it can had length less than k
+        # and we won't be able to calculate recall at k
+        shuffle=True,
+        num_workers=2
+    )
 
     return train_loader, test_loader
