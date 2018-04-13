@@ -8,10 +8,9 @@ import visdom
 from torch.autograd import Variable
 from torch.optim import lr_scheduler
 
-import metric_learning_utils
-import params
-import test
 import utils
+from evaluation import test
+from utils import metric_learning_utils, params
 
 
 def learning_process(train_loader,

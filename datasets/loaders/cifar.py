@@ -5,8 +5,8 @@ import torchvision.transforms as transforms
 from sklearn import model_selection
 from torch.utils.data.sampler import BatchSampler
 
-import params
-from sampling import UniformSampler
+from datasets.sampling import UniformSampler
+from utils import params
 
 
 # I use this class to create a dataset which consist of CIFAR100 splited on train and test such that

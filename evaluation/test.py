@@ -6,9 +6,7 @@ from sklearn.neighbors import NearestNeighbors
 from torch.autograd import Variable
 from tqdm import tqdm
 
-import metric_learning_utils
-import params
-import utils
+from utils import metric_learning_utils, params, utils
 
 
 def test_for_classification(test_loader, network):
@@ -227,16 +225,16 @@ def test_for_binary_classification(test_loader, network):
             inputs_2, labels_2 = data_2
             # we need pairs of images in our batch
             input_pairs = Variable(torch.cat((inputs_1.view(params.batch_size_for_binary_classification, -1),
-                                              inputs_2.view(params.batch_size_for_binary_classification, -1))))
+                                              inputs_2.view(params.batch_size_for_binary_classification, -1)))).cuda()
             # and +1/-1 labels matrix
 
-            labels_matrix = Variable(utils.get_labels_matrix(labels_1, labels_2))
+            labels_matrix = Variable(utils.get_labels_matrix(labels_1, labels_2)).cuda()
 
             # here we should create input pair for the network from just inputs
             # print('input_pairs', input_pairs)
-            outputs = network(input_pairs).data.numpy()
+            outputs = network(input_pairs).data.cpu().numpy()
 
-            ground_truth = labels_matrix.long().view(-1, 1).squeeze().data.numpy()
+            ground_truth = labels_matrix.long().view(-1, 1).squeeze().data.cpu().numpy()
 
             #print('outputs ', outputs)
             #print('ground_truth ', ground_truth)
@@ -250,5 +248,37 @@ def test_for_binary_classification(test_loader, network):
         print('average f1 = ', average_f1)
         return average_f1
 
+
+def test_for_binary_classification_1_batch(test_loader, network):
+    f1 = 0.0
+    number_of_small_matrices = 0.0
+    ground_truth_sum = 0
+    total = 0
+    for data in test_loader:
+        inputs, labels = data
+        # and +1/-1 labels matrix
+        labels_matrix = Variable(utils.get_labels_matrix(labels, labels)).cuda()
+
+        # here we should create input pair for the network from just inputs
+        # print('input_pairs', input_pairs)
+        outputs = network(Variable(inputs).cuda()).data.cpu().numpy()
+
+        ground_truth = labels_matrix.long().view(-1, 1).squeeze().data.cpu().numpy()
+        ground_truth_sum = ground_truth_sum + np.sum(ground_truth)
+        total = total + ground_truth.shape[0]
+        # print('outputs ', outputs)
+        # print('ground_truth ', ground_truth)
+
+        outputs[np.where(outputs[:, 0] >= 0.5)[0], 0] = 1
+        outputs[np.where(outputs[:, 0] < 0.5)[0], 0] = 0
+        #if 1 in outputs[:, 0]:
+        #    print('outputs ', outputs)
+        f1 = f1 + f1_score(ground_truth, outputs[:, 0])
+        number_of_small_matrices = number_of_small_matrices + 1.0
+
+    average_f1 =  f1/number_of_small_matrices
+    print('average f1 = ', average_f1)
+    print('ground_truth_sum/total =', ground_truth_sum/total)
+    return average_f1
 
 

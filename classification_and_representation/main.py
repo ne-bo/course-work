@@ -6,18 +6,14 @@ import torchvision
 import torchvision.models as models
 from torch.optim import lr_scheduler
 
-import birds
-import cifar
-import histogramm_loss
-import learning
-import metric_learning
-import metric_learning_utils
-import params
-import similarity_network_effective
-import small_resnet_for_cifar
-import spoc
-import test
+import networks_and_layers.l2_normalization
 import utils
+from datasets.loaders import birds, cifar
+from evaluation import test
+from losses import histogramm_loss
+from networks_and_layers import similarity_network_effective, small_resnet_for_cifar
+from training_procedures import learning, metric_learning
+from utils import metric_learning_utils, params, spoc
 
 
 def debug_images_show(loader):
@@ -372,7 +368,7 @@ def main():
         network.fc = torch.nn.Sequential()
         network.fc.add_module('fc', nn.Linear(num_ftrs, params.num_classes))
         network.fc.add_module('l2normalization',
-                              small_resnet_for_cifar.L2Normalization())  # need normalization for histogramm loss
+                              networks_and_layers.l2_normalization.L2Normalization())  # need normalization for histogramm loss
         network = network.cuda()
         print(network)
 

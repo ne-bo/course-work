@@ -4,7 +4,7 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torch.utils.data.sampler import Sampler
 
-import params
+from utils import params
 
 
 # This function takes main label and return an array of indices
@@ -107,14 +107,15 @@ class UniformSampler(Sampler):
     """
 
     def __init__(self, data_source, batch_size, number_of_samples_with_the_same_label_in_the_batch,
-                 several_labels=False):
+                 several_labels=False, train_or_test='train'):
         super().__init__(data_source)
         self.data_source = data_source
-        print('self.data_source[0] ', self.data_source[0])
+        print('self.data_source[0] ', self.data_source)
         self.num_samples = len(self.data_source)
         self.batch_size = batch_size
         self.number_of_samples_with_the_same_label_in_the_batch = number_of_samples_with_the_same_label_in_the_batch
         self.several_labels = several_labels
+        self.train_or_test = train_or_test
 
     def get_indices_for_new_batch(self, remaining):
         new_batch = np.empty(0, dtype=int)
@@ -149,12 +150,17 @@ class UniformSampler(Sampler):
 
     # here we stacks arrays of batches with different main labels
     def __iter__(self):
+        if self.train_or_test == 'train':
+            source_labels = self.data_source.train_labels
+        else:
+            source_labels = self.data_source.test_labels
+
         if self.several_labels:
             # if we can have several labels for the 1 image we just take the random label
             train_labels = []
 
             #print('train_labels before ', train_labels)
-            for i, labels in enumerate(self.data_source.train_labels):
+            for i, labels in enumerate(source_labels):
                 real_labels = np.delete(labels, np.where(labels == 0)[0])
                 number_of_different_labels = len(real_labels)
                 random_index = np.random.randint(low=0, high=number_of_different_labels)
@@ -163,7 +169,7 @@ class UniformSampler(Sampler):
             #print('several train_labels', train_labels)
             #print('self.data_source.train_labels ', self.data_source.train_labels)
         else:
-            train_labels = np.array(self.data_source.train_labels)
+            train_labels = np.array(source_labels)
 
         indices_to_take = np.empty(0, dtype=int)
         remaining = train_labels

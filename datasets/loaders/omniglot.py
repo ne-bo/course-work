@@ -5,8 +5,8 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import BatchSampler
 
-import params
-from sampling import UniformSampler
+from datasets.sampling import UniformSampler
+from utils import params
 
 
 def get_filenames_and_labels(data_folder, test_or_train='test'):
@@ -44,7 +44,7 @@ def get_filenames_and_labels(data_folder, test_or_train='test'):
             # print('labels[i]', labels[i].dtype)
         labels = np.array(labels)
 
-    for i in range(10000):
+    for i in range(100000):
         path = data_folder + ('natasha_omniglot_%s/%d.jpg' % (test_or_train, i))
         images_paths.append(path)
         images_indices.append(i)
@@ -74,7 +74,7 @@ def get_filenames_and_labels(data_folder, test_or_train='test'):
 
 
 class Omniglot(Dataset):
-    def __init__(self, data_folder, transform=None, test_or_train='test', image_size = 32):
+    def __init__(self, data_folder, transform=None, test_or_train='test', image_size = 128):
         self.data_folder = data_folder
         self.transform = transform
         if test_or_train == 'train':
@@ -131,12 +131,12 @@ def create_new_train_and_test_datasets(transform_train, transform_test, data_fol
     new_train_dataset = Omniglot(data_folder=data_folder,
                                  transform=transform_train,
                                  test_or_train='train',
-                                 image_size = 32
+                                 image_size = 128
                                  )
     new_test_dataset = Omniglot(data_folder=data_folder,
                                 transform=transform_test,
                                 test_or_train='test',
-                                image_size = 32
+                                image_size = 128
                                 )
     print('len(new_train_dataset.train_images) ', len(new_train_dataset.train_images))
     print('len(new_train_dataset.test_images) ', len(new_train_dataset.test_images))
@@ -158,26 +158,45 @@ def download_Omniglot_for_representation(data_folder, image_size):
     #
     ###########################
 
-    uniform_sampler = UniformSampler(
+    uniform_sampler_train = UniformSampler(
         new_train_dataset,
         batch_size=params.batch_size_for_binary_classification,
         number_of_samples_with_the_same_label_in_the_batch=params.number_of_samples_with_the_same_label_in_the_batch_for_binary,
-        several_labels=True
+        several_labels=True,
+        train_or_test='train'
     )
-    print('uniform_sampler ', uniform_sampler)
-    batch_sampler = BatchSampler(
-            sampler=uniform_sampler,
+    print('uniform_sampler_train ', uniform_sampler_train)
+
+    uniform_sampler_test = UniformSampler(
+        new_test_dataset,
+        batch_size=params.batch_size_for_binary_classification,
+        number_of_samples_with_the_same_label_in_the_batch=params.number_of_samples_with_the_same_label_in_the_batch_for_binary,
+        several_labels=True,
+        train_or_test='test'
+    )
+    print('uniform_sampler_test ', uniform_sampler_test)
+
+
+    batch_sampler_train = BatchSampler(
+            sampler=uniform_sampler_train,
             batch_size=params.batch_size_for_binary_classification,
             drop_last=True
         )
-    print('batch_sampler ', batch_sampler)
+    print('batch_sampler_train ', batch_sampler_train)
+
+    batch_sampler_test = BatchSampler(
+            sampler=uniform_sampler_test,
+            batch_size=params.batch_size_for_binary_classification,
+            drop_last=True
+        )
+    print('batch_sampler_test ', batch_sampler_test)
 
     print('************************************************')
     print('    Create train loared')
     print('************************************************')
     train_loader = data.DataLoader(
         new_train_dataset,
-        batch_sampler=batch_sampler,
+        batch_sampler=batch_sampler_train,
         num_workers=8
     )
 
@@ -186,13 +205,20 @@ def download_Omniglot_for_representation(data_folder, image_size):
     print('    Create test loared')
     print('************************************************')
 
+    # test_loader = data.DataLoader(
+    #     new_test_dataset,
+    #     batch_size=params.batch_size_for_binary_classification,
+    #     drop_last=True,  # we need to drop last batch because it can had length less than k
+    #     # and we won't be able to calculate recall at k
+    #     shuffle=True,
+    #     num_workers=2
+    # )
+
     test_loader = data.DataLoader(
         new_test_dataset,
-        batch_size=params.batch_size_for_binary_classification,
-        drop_last=True,  # we need to drop last batch because it can had length less than k
-        # and we won't be able to calculate recall at k
-        shuffle=True,
-        num_workers=2
+        batch_sampler=batch_sampler_test,
+        num_workers=8
     )
+    print('test_loader ', test_loader.__iter__().collate_fn)
 
     return train_loader, test_loader

@@ -1,26 +1,13 @@
 import math
 
-import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
 
-import cifar
-import learning
-import params
-
-
-# Lera's implementation
-class L2Normalization(nn.Module):
-    def __init__(self):
-        super(L2Normalization, self).__init__()
-
-    def forward(self, input):
-        input = input.squeeze()
-        return input.div(torch.norm(input, dim=1).view(-1, 1))
-
-    def __repr__(self):
-        return self.__class__.__name__
+from datasets.loaders import cifar
+from networks_and_layers.l2_normalization import L2Normalization
+from training_procedures import learning
+from utils import params
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -130,7 +117,7 @@ class SmallResnet(nn.Module):
         x = x.view(x.size(0), -1)
         x = self.fc(x)
 
-        x = self.norm(x) # added in order to make histogramm loss work
+        x = self.norm(x)  # added in order to make histogramm loss work
 
         return x
 
@@ -217,5 +204,4 @@ def test_on_cifar_10():
                               start_epoch=restore_epoch,
                               lr_scheduler=multi_lr_scheduler)
 
-
-#test_on_cifar_10()
+# test_on_cifar_10()

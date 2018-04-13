@@ -5,8 +5,8 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import BatchSampler
 
-import params
-from sampling import UniformSampler
+from datasets.sampling import UniformSampler
+from utils import params
 
 
 def get_filenames_and_labels(data_folder, test_or_train='test'):
@@ -194,9 +194,9 @@ def download_BIRDS_for_representation(data_folder):
                                   # unfortunately we don't have enough memory to evaluate easily on FULL test
                                   batch_size=params.batch_size_for_representation,
 
-                                  drop_last=True, # we need to drop last batch because it can had length less than k
+                                  drop_last=True,  # we need to drop last batch because it can had length less than k
                                   # and we won't be able to calculate recall at k
-                                  shuffle=True, # shuffle is extremely importatnt here because we take 10 neighbors
+                                  shuffle=True,  # shuffle is extremely importatnt here because we take 10 neighbors
                                   # out of 16 images in the batch
                                   num_workers=2)
 

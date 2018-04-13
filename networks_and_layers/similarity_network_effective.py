@@ -11,13 +11,16 @@ class AllPairs(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
 
-        self.fc1 = nn.Linear(self.in_features, self.in_features)
-        self.fc2 = nn.Linear(self.in_features, self.in_features)
-        self.fc3 = nn.Linear(self.in_features, self.out_features)
+
         if cuda:
-            self.fc1 = self.fc1.cuda()
-            self.fc2 = self.fc2.cuda()
-            self.fc3 = self.fc3.cuda()
+            self.fc1 = nn.Linear(self.in_features, self.in_features).cuda()
+            self.fc2 = nn.Linear(self.in_features, self.in_features).cuda()
+            self.fc3 = nn.Linear(self.in_features, self.out_features).cuda()
+        else:
+            self.fc1 = nn.Linear(self.in_features, self.in_features)
+            self.fc2 = nn.Linear(self.in_features, self.in_features)
+            self.fc3 = nn.Linear(self.in_features, self.out_features)
+
 
         if self.l1_initialization:
             self.fc1.weight.data = torch.from_numpy(np.eye(self.fc1.weight.size(0))).float()
@@ -54,7 +57,7 @@ class AllPairs(nn.Module):
 
 
 class EffectiveSimilarityNetwork(nn.Module):
-    def __init__(self, number_of_input_features, l1_initialization=False, number_of_output_neurons=1, cuda=True):
+    def __init__(self, number_of_input_features, number_of_output_neurons=1, l1_initialization=False, cuda=True):
         super(EffectiveSimilarityNetwork, self).__init__()
 
         ##################################################################

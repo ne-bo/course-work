@@ -6,12 +6,10 @@ import torch
 import visdom
 from torch.autograd import Variable
 
-import histogramm_loss_for_similarity
-import margin_loss_for_similarity
-import metric_learning_utils
-import params
-import test
 import utils
+from evaluation import test
+from losses import histogramm_loss_for_similarity, margin_loss_for_similarity
+from utils import metric_learning_utils, params
 
 
 def metric_learning(all_outputs_train, all_labels_train,
@@ -175,8 +173,8 @@ def metric_learning(all_outputs_train, all_labels_train,
 
             print('Evaluation on test internal')
             recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
-                                                            all_outputs=all_outputs_test, all_labels=all_labels_test,
-                                                            similarity_network=similarity_network)
+                                                               all_outputs=all_outputs_test, all_labels=all_labels_test,
+                                                               similarity_network=similarity_network)
 
             if stage == 1:
                 loss_function_name =''

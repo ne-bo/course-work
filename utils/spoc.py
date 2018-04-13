@@ -3,23 +3,23 @@ import torch.nn as nn
 import torchvision.models as models
 from torch.autograd import Variable
 
-import UKB
-import params
-import test
-from small_resnet_for_cifar import L2Normalization
+from datasets.loaders import UKB
+from evaluation import test
+from networks_and_layers.l2_normalization import L2Normalization
+from utils import params
 
 
 def learn_PCA_matrix_for_spocs(spocs, desired_dimension):
-    print('spocs in learn PCA ', spocs.shape )
-    U, S, V = torch.svd(torch.t(spocs))
-    print('U.shape ', U.shape)
-    print('S.shape ', S.shape)
+    # print('spocs in learn PCA ', spocs.data.shape )
+    U, S, V = torch.svd(torch.t(spocs.data))
+    # print('U.shape ', U.shape)
+    # print('S.shape ', S.shape)
     return U[:, :desired_dimension], S[:desired_dimension]
 
 
 # outputs is a Tensor with the shape batch_size x 512 x 37 x 37
 # we should return the Tensor of size batch_size x 256
-def compute_spoc_by_outputs(outputs, test_or_train):
+def compute_spoc_by_outputs(outputs):
     batch_size = outputs.size(0)
     desired_representation_length = outputs.size(1)
     # sum pooling
@@ -42,7 +42,7 @@ def save_all_spocs_and_labels(test_loader, network, file_spoc, file_labels, test
         #print('labels in batch ', labels),
         outputs = network(Variable(images).cuda())
 
-        spocs = compute_spoc_by_outputs(outputs, test_or_train)
+        spocs = compute_spoc_by_outputs(outputs)
         #print('spocs ', spocs)
         all_spocs = torch.cat((all_spocs, spocs.data), dim=0)
         all_labels = torch.cat((all_labels, labels), dim=0)
