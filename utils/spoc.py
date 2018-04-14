@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision.models as models
+from sklearn.decomposition import PCA
 from torch.autograd import Variable
 
 from datasets.loaders import UKB
@@ -12,8 +13,19 @@ from utils import params
 def learn_PCA_matrix_for_spocs(spocs, desired_dimension):
     # print('spocs in learn PCA ', spocs.data.shape )
     U, S, V = torch.svd(torch.t(spocs.data))
-    # print('U.shape ', U.shape)
-    # print('S.shape ', S.shape)
+    print('U.shape ', U.shape)
+    print('S.shape ', S.shape)
+    print('V.shape ', V.shape)
+    return U[:, :desired_dimension], S[:desired_dimension]
+
+def learn_PCA_matrix_for_spocs_with_sklearn(spocs, desired_dimension):
+    print('spocs in learn PCA ', spocs.shape)
+    pca = PCA(n_components=desired_dimension)
+    U, S, V = pca._fit(torch.t(spocs).cpu().numpy())
+    print('U ', U.shape)
+    print('S ', S.shape)
+    print('V ', V.shape)
+    print('pca.components_.shape', pca.components_.shape)
     return U[:, :desired_dimension], S[:desired_dimension]
 
 
@@ -28,6 +40,8 @@ def compute_spoc_by_outputs(outputs):
     normalization = L2Normalization()
     spocs = normalization(sum_pooled)
     return spocs
+
+
 
 
 def save_all_spocs_and_labels(test_loader, network, file_spoc, file_labels, test_or_train):

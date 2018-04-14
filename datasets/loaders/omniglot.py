@@ -27,7 +27,7 @@ def get_filenames_and_labels(data_folder, test_or_train='test'):
         labels = x.split(' ')[1:]
         while len(labels) < 3:
             labels.append('1000000')
-            #print('labels appended ', labels)
+            # print('labels appended ', labels)
         images_labels.append(labels)
         all_possible_labels.extend(labels)
 
@@ -74,7 +74,7 @@ def get_filenames_and_labels(data_folder, test_or_train='test'):
 
 
 class Omniglot(Dataset):
-    def __init__(self, data_folder, transform=None, test_or_train='test', image_size = 128):
+    def __init__(self, data_folder, transform=None, test_or_train='test', image_size=128):
         self.data_folder = data_folder
         self.transform = transform
         if test_or_train == 'train':
@@ -128,16 +128,18 @@ def create_transformations_for_test_and_train(image_size):
 def create_new_train_and_test_datasets(transform_train, transform_test, data_folder, image_size):
     # create new dataset for representational learning
     # where in train we have first 100 classes and in test the remaining 100
-    new_train_dataset = Omniglot(data_folder=data_folder,
-                                 transform=transform_train,
-                                 test_or_train='train',
-                                 image_size = 128
-                                 )
-    new_test_dataset = Omniglot(data_folder=data_folder,
-                                transform=transform_test,
-                                test_or_train='test',
-                                image_size = 128
-                                )
+    new_train_dataset = Omniglot(
+        data_folder=data_folder,
+        transform=transform_train,
+        test_or_train='train',
+        image_size=image_size
+    )
+    new_test_dataset = Omniglot(
+        data_folder=data_folder,
+        transform=transform_test,
+        test_or_train='test',
+        image_size=image_size
+    )
     print('len(new_train_dataset.train_images) ', len(new_train_dataset.train_images))
     print('len(new_train_dataset.test_images) ', len(new_train_dataset.test_images))
 
@@ -176,19 +178,18 @@ def download_Omniglot_for_representation(data_folder, image_size):
     )
     print('uniform_sampler_test ', uniform_sampler_test)
 
-
     batch_sampler_train = BatchSampler(
-            sampler=uniform_sampler_train,
-            batch_size=params.batch_size_for_binary_classification,
-            drop_last=True
-        )
+        sampler=uniform_sampler_train,
+        batch_size=params.batch_size_for_binary_classification,
+        drop_last=True
+    )
     print('batch_sampler_train ', batch_sampler_train)
 
     batch_sampler_test = BatchSampler(
-            sampler=uniform_sampler_test,
-            batch_size=params.batch_size_for_binary_classification,
-            drop_last=True
-        )
+        sampler=uniform_sampler_test,
+        batch_size=params.batch_size_for_binary_classification,
+        drop_last=True
+    )
     print('batch_sampler_test ', batch_sampler_test)
 
     print('************************************************')

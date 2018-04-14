@@ -1,3 +1,5 @@
+import gc
+
 import numpy as np
 import torch
 from torch.autograd import Variable
@@ -14,6 +16,45 @@ def get_all_outputs_and_labels(test_loader, network):
     print('all_outputs', all_outputs)
     print('all_labels', all_labels)
     return all_outputs, all_labels
+
+
+def get_all_outputs_and_labels_for_large_dataset(test_loader, network):
+    all_outputs = torch.cuda.FloatTensor()
+    all_labels = torch.LongTensor()
+    i = 0
+    pack_volume = 10
+    print('len(test_loader) ', len(test_loader.dataset.train_images))
+    dataset_length = len(test_loader.dataset.train_images)
+    for data in test_loader:
+        images, labels = data
+        outputs = network(Variable(images).cuda())
+        all_outputs = torch.cat((all_outputs, outputs.data), dim=0)
+        all_labels = torch.cat((all_labels, labels), dim=0)
+        if i % pack_volume == 0:
+            torch.save(all_outputs, '/tmp/all_outputs_%d' % i)
+            torch.save(all_labels, '/tmp/all_labels_%d' % i)
+            print('saving i = ', i)
+            all_outputs = torch.cuda.FloatTensor()
+            all_labels = torch.LongTensor()
+            gc.collect()
+        i = i + 1
+    number_of_batches = i
+    print('number_of_batches ', number_of_batches)
+    all_outputs = torch.FloatTensor()
+    all_labels = torch.LongTensor()
+    for i in range(number_of_batches):
+        if i % pack_volume == 0:
+            outputs = torch.load('/tmp/all_outputs_%d' % i).cpu()
+            labels = torch.load('/tmp/all_labels_%d' % i)
+            all_outputs = torch.cat((all_outputs, outputs), dim=0)
+            all_labels = torch.cat((all_labels, labels), dim=0)
+            print('reading i = ', i, 'outputs ', outputs.shape)
+
+            gc.collect()
+
+    return all_outputs, all_labels
+
+
 
 
 from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine_similarity

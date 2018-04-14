@@ -58,3 +58,7 @@ def get_labels_matrix(labels_list_1, labels_list_2):
             matrix[i, j] = int(np.in1d(new_labels_1, new_labels_2).any())
     # print('matrix ', matrix)
     return matrix
+
+
+def get_layer_with_number(network, layer_number):
+    return torch.nn.Sequential(*list(network.features.children())[:layer_number]).cuda()
