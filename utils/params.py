@@ -94,9 +94,9 @@ loss_for_similarity = 'delta' # possible values 'histogramm', 'margin', 'delta'
 ##############################################################################
 
 default_recovery_epoch_for_binary_classification = 100
-learning_rate_for_binary_classification = 0.001
+learning_rate_for_binary_classification = 0.01
 batch_size_for_binary_classification = 300
-number_of_samples_with_the_same_label_in_the_batch_for_binary = 5 * batch_size_for_binary_classification / 6
+number_of_samples_with_the_same_label_in_the_batch_for_binary = 6 * batch_size_for_binary_classification / 7
 momentum_for_binary_classification = 0.9
 recover_binary_classification = False
 name_prefix_for_saved_model_for_binary_classification = 'binary'

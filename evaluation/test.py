@@ -261,19 +261,15 @@ def test_for_binary_classification_1_batch(test_loader, network):
 
         # here we should create input pair for the network from just inputs
         # print('input_pairs', input_pairs)
-        outputs = network(Variable(inputs).cuda()).data.cpu().numpy()
+        outputs = network(Variable(inputs).cuda()).data
+        _, predicted = torch.max(outputs, 1)
+        predicted = predicted.cpu().numpy()
+        # print('predicted ', predicted)
 
         ground_truth = labels_matrix.long().view(-1, 1).squeeze().data.cpu().numpy()
         ground_truth_sum = ground_truth_sum + np.sum(ground_truth)
         total = total + ground_truth.shape[0]
-        # print('outputs ', outputs)
-        # print('ground_truth ', ground_truth)
-
-        outputs[np.where(outputs[:, 0] >= 0.5)[0], 0] = 1
-        outputs[np.where(outputs[:, 0] < 0.5)[0], 0] = 0
-        #if 1 in outputs[:, 0]:
-        #    print('outputs ', outputs)
-        f1 = f1 + f1_score(ground_truth, outputs[:, 0])
+        f1 = f1 + f1_score(ground_truth, predicted)
         number_of_small_matrices = number_of_small_matrices + 1.0
 
     average_f1 =  f1/number_of_small_matrices

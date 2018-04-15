@@ -44,7 +44,7 @@ def get_filenames_and_labels(data_folder, test_or_train='test'):
             # print('labels[i]', labels[i].dtype)
         labels = np.array(labels)
 
-    for i in range(100000):
+    for i in range(10000):
         path = data_folder + ('natasha_omniglot_%s/%d.jpg' % (test_or_train, i))
         images_paths.append(path)
         images_indices.append(i)
