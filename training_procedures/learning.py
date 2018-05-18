@@ -101,9 +101,8 @@ def learning_process(train_loader,
                 # we should recalculate all outputs before the evaluation because our network changed during the trainig
                 all_outputs_test, all_labels_test = metric_learning_utils.get_all_outputs_and_labels(test_loader,
                                                                                                      network)
-                recall_at_k = test.full_test_for_representation(k=params.k_for_recall,
-                                                                all_outputs=all_outputs_test,
-                                                                all_labels=all_labels_test)
+                recall_at_k = test.recall_test_for_representation(k=params.k_for_recall, all_outputs=all_outputs_test,
+                                                                  all_labels=all_labels_test)
             utils.save_checkpoint(network=network,
                                   optimizer=optimizer,
                                   filename=name_prefix_for_saved_model + '-%d' % epoch,

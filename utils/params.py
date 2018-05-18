@@ -95,8 +95,18 @@ loss_for_similarity = 'delta' # possible values 'histogramm', 'margin', 'delta'
 
 default_recovery_epoch_for_binary_classification = 100
 learning_rate_for_binary_classification = 0.01
-batch_size_for_binary_classification = 300
-number_of_samples_with_the_same_label_in_the_batch_for_binary = 6 * batch_size_for_binary_classification / 7
+batch_size_for_binary_classification = 270
+number_of_samples_with_the_same_label_in_the_batch_for_binary = 9 * batch_size_for_binary_classification / 10
 momentum_for_binary_classification = 0.9
 recover_binary_classification = False
 name_prefix_for_saved_model_for_binary_classification = 'binary'
+
+
+##############################################################################
+#
+# Poincare parameters
+#
+##############################################################################
+
+learning_rate_for_poincare_stage_1 = 0.01
+learning_rate_for_poincare_stage_2 = 0.01

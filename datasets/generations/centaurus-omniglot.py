@@ -17,9 +17,9 @@ class Character():
         image_path = self.data_folder + '/' + self.subfolder \
                      + '/' + self.alphabet + '/' + self.character_number \
                      + '/' + self.character_representation_number
-        #print('image_path', image_path)
+        # print('image_path', image_path)
         self.image = Image.open(image_path)
-        #plt.imshow(np.asarray(self.image))
+        # plt.imshow(np.asarray(self.image))
         # plt.show()
         return self.image
 

@@ -196,7 +196,7 @@ def download_BIRDS_for_representation(data_folder):
 
                                   drop_last=True,  # we need to drop last batch because it can had length less than k
                                   # and we won't be able to calculate recall at k
-                                  shuffle=True,  # shuffle is extremely importatnt here because we take 10 neighbors
+                                  shuffle=True,  # shuffle is extremely important here because we take 10 neighbors
                                   # out of 16 images in the batch
                                   num_workers=2)
 

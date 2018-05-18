@@ -7,6 +7,7 @@ from torch.autograd import Variable
 
 from evaluation import test
 from utils import params, utils
+from utils.metric_learning_utils import get_indices_for_loss
 
 
 def binary_learning(train_loader,
@@ -29,29 +30,32 @@ def binary_learning(train_loader,
     average_f1_plot = vis.line(Y=np.zeros(1), X=np.zeros(1), opts=options)
 
     for epoch in range(start_epoch, params.number_of_epochs_for_metric_learning):
-        lr_scheduler.step(epoch=epoch)
+
         print('current_learning_rate =', optimizer.param_groups[0]['lr'], ' ', datetime.datetime.now())
 
         i = 0
         for data in train_loader:
             i = i + 1
             inputs, labels = data
-            # print('inputs ', inputs) # batch_sizex3x64x64
+            # print('inputs ', inputs) # batch_size x 3 x 64 x 64
             # we need pairs of images in our batch
             # print('inputs, labels ', labels)
             # and +1/-1 labels matrix
 
-            labels_matrix = Variable(utils.get_labels_matrix(labels, labels)).cuda()
+            labels_matrix = utils.get_labels_matrix(labels, labels).view(-1, 1)
+
+            indices_for_loss = get_indices_for_loss(labels_matrix)
+
+            labels_matrix = labels_matrix[indices_for_loss]
+            labels_matrix = Variable(labels_matrix).cuda()
             # zero the parameter gradients
             optimizer.zero_grad()
 
             # forward + backward + optimize
             # here we should create input pair for the network from just inputs
-            # print('input_pairs', input_pairs)
             outputs = network(Variable(inputs).cuda())
 
-            # print('outputs ', outputs)
-            # print('labels_matrix ', labels_matrix.long().view(-1, 1).squeeze())
+            outputs = outputs[indices_for_loss.cuda(), :]
 
             loss = criterion(outputs, labels_matrix.long().view(-1, 1).squeeze())
 
@@ -60,8 +64,9 @@ def binary_learning(train_loader,
 
             # print statistics
             current_batch_loss = loss.data[0]
+
             if i % 10 == 0:  # print every 2000 mini-batches
-                print('[ephoch %d, itteration in the epoch %5d] loss: %.30f' % (epoch + 1, i + 1, current_batch_loss))
+                print('[epoch %d, iteration in the epoch %5d] loss: %.30f' % (epoch + 1, i + 1, current_batch_loss))
                 # print('PCA matrix ', network.spoc.PCA_matrix)
 
                 r_loss.append(current_batch_loss)
@@ -70,7 +75,9 @@ def binary_learning(train_loader,
                 options = dict(legend=['loss'])
                 loss_plot = vis.line(Y=np.array(r_loss), X=np.array(iterations), win=loss_plot, opts=options)
 
-        if epoch % 1 == 0:
+        lr_scheduler.step(epoch=epoch, metrics=current_batch_loss)
+
+        if epoch % 10 == 0:
             epochs.append(epoch)
             # print the quality metric
             gc.collect()
@@ -93,3 +100,5 @@ def binary_learning(train_loader,
         total_iteration = total_iteration + i
 
     print('Finished Training for binary classification')
+
+

@@ -12,16 +12,8 @@ from losses import histogramm_loss_for_similarity, margin_loss_for_similarity
 from utils import metric_learning_utils, params
 
 
-def metric_learning(all_outputs_train, all_labels_train,
-                    representation_network, similarity_network,
-                    start_epoch,
-                    optimizer,
-                    lr_scheduler,
-                    criterion, stage,
-                    all_outputs_test, all_labels_test,
-                    cosine_similarity_matrix,
-                    signs_matrix
-                    ):
+def metric_learning(all_outputs_train, all_labels_train, similarity_network, start_epoch, optimizer, lr_scheduler,
+                    criterion, stage, all_outputs_test, all_labels_test):
     vis = visdom.Visdom()
     r_loss = []
     r_recall = []
@@ -161,10 +153,9 @@ def metric_learning(all_outputs_train, all_labels_train,
             gc.collect()
 
             print('Evaluation on train internal')
-            recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
-                                                               all_outputs=all_outputs_train,
-                                                               all_labels=all_labels_train,
-                                                               similarity_network=similarity_network)
+            recall_at_k = test.recall_test_for_representation(k=params.k_for_recall, all_outputs=all_outputs_train,
+                                                              all_labels=all_labels_train,
+                                                              similarity_network=similarity_network)
             r_recall.append(recall_at_k)
             options = dict(legend=['recall for stage ' + str(stage)])
             recall_plot = vis.line(Y=np.array(r_recall), X=np.array(epochs),
@@ -172,9 +163,9 @@ def metric_learning(all_outputs_train, all_labels_train,
                                  win=recall_plot, opts=options)
 
             print('Evaluation on test internal')
-            recall_at_k = test.partial_test_for_representation(k=params.k_for_recall,
-                                                               all_outputs=all_outputs_test, all_labels=all_labels_test,
-                                                               similarity_network=similarity_network)
+            recall_at_k = test.recall_test_for_representation(k=params.k_for_recall, all_outputs=all_outputs_test,
+                                                              all_labels=all_labels_test,
+                                                              similarity_network=similarity_network)
 
             if stage == 1:
                 loss_function_name =''

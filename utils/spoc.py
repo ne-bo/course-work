@@ -118,11 +118,9 @@ def get_spoc():
     torch.save(all_spocs_test, 'all_spocs_file_test_after_pca')
 
     print("Evaluation on train")
-    test.full_test_for_representation(k=params.k_for_recall,
-                                      all_outputs=all_spocs_train, all_labels=all_labels_train)
+    test.recall_test_for_representation(k=params.k_for_recall, all_outputs=all_spocs_train, all_labels=all_labels_train)
     print("Evaluation on test")
-    test.full_test_for_representation(k=params.k_for_recall,
-                                      all_outputs=all_spocs_test, all_labels=all_labels_test)
+    test.recall_test_for_representation(k=params.k_for_recall, all_outputs=all_spocs_test, all_labels=all_labels_test)
 
 
 # get_spoc()

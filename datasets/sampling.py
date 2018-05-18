@@ -1,10 +1,5 @@
 import numpy as np
-import torch.utils.data as data
-import torchvision.datasets as datasets
-import torchvision.transforms as transforms
 from torch.utils.data.sampler import Sampler
-
-from utils import params
 
 
 # This function takes main label and return an array of indices
@@ -44,7 +39,7 @@ def shuffle_with_batch_size(array, batch_size):
 
     # print('start_batches_indices = ', start_batches_indices)
     np.random.shuffle(start_batches_indices)
-    # print('after shuffling start_batches_indices = ', start_batches_indices)
+    print('after shuffling start_batches_indices = ', start_batches_indices[:5])
     new_array = np.zeros(n, dtype=int)
     j = 0
     for i in start_batches_indices:
@@ -130,13 +125,14 @@ class UniformSampler(Sampler):
             all_remaining_labels = all_remaining_labels[1:]
             np.random.shuffle(all_remaining_labels)
             # get number of samples for current label in this batch
-            number_of_sumples = np.random.randint(
+            number_of_samples = np.random.randint(
                 low=int(self.number_of_samples_with_the_same_label_in_the_batch * 0.75),
                 high=int(self.number_of_samples_with_the_same_label_in_the_batch * 1.25)
             )
-            # print('number_of_sumples = ', number_of_sumples)
+            # print('number_of_samples = ', number_of_samples)
             # we will put this indices in our new batch
-            indices_to_put_in_new_batch = np.random.permutation(np.where(remaining == label)[0])[:number_of_sumples]
+            # print('we have ', np.where(remaining == label)[0].shape[0], ' elements with label ', label)
+            indices_to_put_in_new_batch = np.random.permutation(np.where(remaining == label)[0])[:number_of_samples]
             new_batch = np.hstack((new_batch, indices_to_put_in_new_batch))
             # and remove them from the remaining part
             # print('puted ', remaining[indices_to_put_in_new_batch].shape)
@@ -181,7 +177,10 @@ class UniformSampler(Sampler):
             number_of_batches = number_of_batches + 1
 
         #print('indices_to_take = ', indices_to_take.shape, ' ', indices_to_take)
-        #print('labels to take = ', self.data_source.train_labels[indices_to_take])
+        if self.train_or_test == 'train':
+            print('labels to take = ', self.data_source.train_labels[indices_to_take])
+        else:
+            print('labels to take = ', self.data_source.test_labels[indices_to_take])
 
         shuffled_batches = shuffle_with_batch_size(indices_to_take, self.batch_size)
         #print('shuffled_batches ', shuffled_batches)
@@ -191,26 +190,3 @@ class UniformSampler(Sampler):
     def __len__(self):
         return self.batch_size
 
-
-def test_sample():
-    transform = transforms.Compose([transforms.ToTensor(),
-                                    transforms.Normalize((0.5, 0.5, 0.5),
-                                                         (0.5, 0.5, 0.5))])
-
-    train = datasets.CIFAR100(root=params.data_folder,
-                              train=True,
-                              download=True,
-                              transform=transform)
-    train_loader = data.DataLoader(train,
-                                   batch_size=params.batch_size,
-                                   sampler=PercentageSampler(train, batch_size=params.batch_size, percentage=50),
-                                   num_workers=2)
-    for i, d in enumerate(train_loader, 0):
-        # get the inputs
-        # inputs are [torch.FloatTensor of size 4x3x32x32]
-        # labels are [torch.LongTensor of size 4]
-        # here 4 is a batch size and 3 is a number of channels in the input images
-        # 32x32 is a size of input image
-        inputs, labels = d
-
-# test_sample()

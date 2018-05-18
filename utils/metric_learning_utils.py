@@ -1,8 +1,16 @@
 import gc
+import sys
+from os import path
 
 import numpy as np
 import torch
+from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine_similarity, \
+    euclidean_distances as sklearn_euclidean_distances, manhattan_distances as sklearn_l1_distances
 from torch.autograd import Variable
+
+# https://github.com/facebookresearch/poincare-embeddings
+sys.path.append(path.abspath('/home/natasha/PycharmProjects/poincare-embeddings/'))
+from model import PoincareDistance
 
 
 def get_all_outputs_and_labels(test_loader, network):
@@ -55,40 +63,33 @@ def get_all_outputs_and_labels_for_large_dataset(test_loader, network):
     return all_outputs, all_labels
 
 
-
-
-from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine_similarity
-from sklearn.metrics.pairwise import euclidean_distances as sklearn_euclidean_distances
-from sklearn.metrics.pairwise import manhattan_distances as sklearn_l1_distances
-
 def get_distance_matrix(representation_outputs_1, representation_outputs_2, distance_type='euclidean'):
-    n = representation_outputs_1.size(0)
-    d = representation_outputs_1.size(1)
 
-    x = representation_outputs_1.unsqueeze(1).expand(n, n, d)
-    y = representation_outputs_2.unsqueeze(0).expand(n, n, d)
-    # print('x ', x)
-    # print('y ', y)
+    allowed_distances_types = ['euclidean', 'l1', 'cosine', 'poincare']
+    assert distance_type in allowed_distances_types, \
+        "Distance type should be  in %s but actual value is %s " % (allowed_distances_types, distance_type)
+
+    x = representation_outputs_1.cpu().numpy()
+    y = representation_outputs_2.cpu().numpy()
+
     if distance_type == 'euclidean':
-        euclidean_distances_matrix = sklearn_euclidean_distances(representation_outputs_1.cpu().numpy(),
-                                                                 representation_outputs_2.cpu().numpy())
-        return torch.from_numpy(euclidean_distances_matrix).float().cuda()
+        matrix = sklearn_euclidean_distances(x, y)
 
-        # return torch.sqrt(torch.pow(x - y, 2).sum(2))
-    else:
-        if distance_type == 'l1':
-            l1_distances_matrix = sklearn_l1_distances(representation_outputs_1.cpu().numpy(),
-                                                                     representation_outputs_2.cpu().numpy())
-            return torch.from_numpy(l1_distances_matrix).float().cuda()
-            #return torch.abs(x - y).sum(2)
-        else:
-            if distance_type == 'cosine':
-                cosine_similarity_matrix = sklearn_cosine_similarity(representation_outputs_1.cpu().numpy(),
-                                                                     representation_outputs_2.cpu().numpy())
-                # print('cosine_similarity_matrix ', cosine_similarity_matrix)
-                return torch.from_numpy(cosine_similarity_matrix).float().cuda()
-            else:
-                raise Exception('You should use euclidean, l1, cosine distance or histogram loss!')
+    if distance_type == 'l1':
+        matrix = sklearn_l1_distances(x, y)
+
+    if distance_type == 'cosine':
+        matrix = sklearn_cosine_similarity(x, y)
+
+    if distance_type == 'poincare':
+        distfn = PoincareDistance
+        matrix = np.zeros((x.shape[0], y.shape[0]))
+        for i, u in enumerate(x):
+            for j, v in enumerate(y):
+                dist_ij = distfn()(Variable(torch.from_numpy(u)), Variable(torch.from_numpy(v)))
+                matrix[i, j] = dist_ij.data.cpu().numpy()
+
+    return torch.from_numpy(matrix).float().cuda()
 
 
 def myfunc(a):
@@ -129,3 +130,16 @@ def get_signs_matrix_for_histogramm_loss(labels1, labels2):
     signs = torch.from_numpy(vfunc(distances_between_labels.cpu().numpy())).byte().cuda()
     # print('signs ', signs)
     return signs
+
+
+def get_indices_for_loss(labels_matrix):
+    indices_of_positive_pairs = torch.from_numpy(np.where(labels_matrix.cpu().numpy() == 1)[0])
+    indices_of_negative_pairs = torch.from_numpy(np.where(labels_matrix.cpu().numpy() == 0)[0])
+    number_of_positive_pairs = indices_of_positive_pairs.shape[0]
+    number_of_negative_pairs = indices_of_negative_pairs.shape[0]
+    if number_of_negative_pairs >= number_of_positive_pairs:
+        permutation = torch.randperm(number_of_negative_pairs)
+        indices_of_negative_pairs = indices_of_negative_pairs[permutation]
+        indices_of_negative_pairs = indices_of_negative_pairs[:number_of_positive_pairs]
+    indices_for_loss = torch.cat((indices_of_positive_pairs, indices_of_negative_pairs), dim=0)
+    return indices_for_loss
