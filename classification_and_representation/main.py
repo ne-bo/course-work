@@ -8,12 +8,13 @@ from torch.optim import lr_scheduler
 
 import networks_and_layers.l2_normalization
 import utils
+from classification_and_representation import spoc
 from datasets.loaders import birds, cifar
 from evaluation import test
-from losses import histogramm_loss
+from losses import histogram_loss
 from networks_and_layers import similarity_network_effective, small_resnet_for_cifar
 from training_procedures import learning, metric_learning
-from utils import metric_learning_utils, params, spoc, utils
+from utils import metric_learning_utils, params, utils
 
 
 def debug_images_show(loader):
@@ -40,7 +41,7 @@ def classification_pretrainig(network, train_loader_for_classification, test_loa
         lr=params.learning_rate_for_classification,
         momentum=params.momentum_for_classification
     )
-    # todo Extract methods is a useful refactoring especialy for code parts with such big comments
+    # todo Extract methods is a useful refactoring especially for code parts with such big comments
     ##################################################################
     #
     # Optional recovering from the saved file
@@ -63,8 +64,8 @@ def classification_pretrainig(network, train_loader_for_classification, test_loa
     # Decay LR by a factor of 0.1 every 10 epochs
     multi_lr_scheduler = lr_scheduler.MultiStepLR(
         optimizer,
-                                                  milestones=[82, 123],
-                                                  gamma=0.1
+        milestones=[82, 123],
+        gamma=0.1
     )
 
     ##################################################################
@@ -74,17 +75,10 @@ def classification_pretrainig(network, train_loader_for_classification, test_loa
     ##################################################################
     if params.learn_classification:
         print('Start classification pretraining')
-        learning.learning_process(
-            train_loader=train_loader_for_classification,
-                                  network=network,
-                                  criterion=nn.CrossEntropyLoss(),
-                                  test_loader=test_loader_for_classification,
-                                  all_outputs_test=None, all_labels_test=None,
-                                  mode=params.mode_classification,
-                                  optimizer=optimizer,
-                                  start_epoch=start_epoch,
-                                  lr_scheduler=multi_lr_scheduler
-        )
+        learning.learning_process(train_loader=train_loader_for_classification, network=network,
+                                  criterion=nn.CrossEntropyLoss(), test_loader=test_loader_for_classification,
+                                  mode=params.mode_classification, optimizer=optimizer, start_epoch=start_epoch,
+                                  lr_scheduler=multi_lr_scheduler)
 
 
 def representations_learning(network, train_loader, test_loader):
@@ -99,9 +93,9 @@ def representations_learning(network, train_loader, test_loader):
         restore_epoch = params.default_recovery_epoch_for_classification
         network = utils.load_network_from_checkpoint(
             network=network,
-                                                     epoch=restore_epoch,
-                                                     name_prefix_for_saved_model=
-                                                     params.name_prefix_for_saved_model_for_classification
+            epoch=restore_epoch,
+            name_prefix_for_saved_model=
+            params.name_prefix_for_saved_model_for_classification
         )
 
     ##################################################################
@@ -112,10 +106,9 @@ def representations_learning(network, train_loader, test_loader):
 
     print('Representational training')
 
-
     optimizer_for_representational_learning = optim.Adam(
         network.parameters(),
-                                                         lr=params.learning_rate_for_representation
+        lr=params.learning_rate_for_representation
     )  # ,
     # momentum=params.momentum)
 
@@ -136,18 +129,10 @@ def representations_learning(network, train_loader, test_loader):
                                            gamma=params.learning_rate_decay_coefficient_for_representation)
 
     if params.learn_representation:
-        learning.learning_process(train_loader=train_loader,
-                                  network=network,
-                                  # criterion=loss.MarginLoss(),
-                                  criterion=histogramm_loss.HistogramLoss(150),
-                                  # criterion=nn.CrossEntropyLoss(),
-                                  test_loader=test_loader,
-                                  all_outputs_test=None,
-                                  all_labels_test=None,
-                                  mode=params.mode_representation,
-                                  optimizer=optimizer_for_representational_learning,
-                                  lr_scheduler=exp_lr_scheduler,
-                                  start_epoch=start_epoch)
+        learning.learning_process(train_loader=train_loader, network=network,
+                                  criterion=histogram_loss.HistogramLoss(150), test_loader=test_loader,
+                                  mode=params.mode_representation, optimizer=optimizer_for_representational_learning,
+                                  start_epoch=start_epoch, lr_scheduler=exp_lr_scheduler)
 
         print("Evaluation: ")
         all_outputs_test, all_labels_test = metric_learning_utils.get_all_outputs_and_labels(test_loader,
@@ -159,7 +144,7 @@ def representations_learning(network, train_loader, test_loader):
                                             all_labels=all_labels_train)
         print("Evaluation on test")
         test.recall_test_for_representation(k=params.k_for_recall,
-                                          all_outputs=all_outputs_test, all_labels=all_labels_test)
+                                            all_outputs=all_outputs_test, all_labels=all_labels_test)
 
 
 def visual_similarity_learning(network, train_loader, test_loader):
@@ -173,11 +158,10 @@ def visual_similarity_learning(network, train_loader, test_loader):
     if params.recover_representation_net_before_similarity:
         representation_network = utils.load_network_from_checkpoint(
             network=network,
-                                                                    epoch=params.default_recovery_epoch_for_representation,
-                                                                    name_prefix_for_saved_model=
-                                                                    params.name_prefix_for_saved_model_for_representation
+            epoch=params.default_recovery_epoch_for_representation,
+            name_prefix_for_saved_model=
+            params.name_prefix_for_saved_model_for_representation
         )
-
 
         representation_length = next(representation_network.fc.modules()).fc.out_features
         print('representation_length = ', representation_length)
@@ -187,6 +171,7 @@ def visual_similarity_learning(network, train_loader, test_loader):
         all_outputs_test, all_labels_test = \
             metric_learning_utils.get_all_outputs_and_labels(test_loader, representation_network)
     else:
+        print('Wee take outputs and labels directly from the files')
         representation_network = None
         representation_length = 256
         all_outputs_train, all_labels_train = spoc.read_spocs_and_labels('all_spocs_file_train_after_pca',
@@ -194,13 +179,12 @@ def visual_similarity_learning(network, train_loader, test_loader):
         all_outputs_test, all_labels_test = spoc.read_spocs_and_labels('all_spocs_file_test_after_pca',
                                                                        'all_labels_file_test')
 
-        # all_outputs_train = torch.from_numpy(np.eye(256)).float().cuda()
-        # print('artificial all_outputs_train', all_outputs_train )
-
-    # print('representation_network = ', representation_network)
     print('representation_length = ', representation_length)
     similarity_learning_network = similarity_network_effective.EffectiveSimilarityNetwork(
-        number_of_input_features=representation_length, l1_initialization=False).cuda()
+        number_of_input_features=representation_length,
+        l1_initialization=False,
+        add_dropout=True
+    ).cuda()
 
     # print('Recover similarity network before the 1 stage')
     # similarity_learning_network = utils.load_network_from_checkpoint(network=similarity_learning_network,
@@ -216,17 +200,6 @@ def visual_similarity_learning(network, train_loader, test_loader):
                                            step_size=params.learning_rate_decay_epoch,
                                            gamma=params.learning_rate_decay_coefficient_for_similarity)
 
-    cosine_similarity_matrix = metric_learning_utils.get_distance_matrix(all_outputs_train,
-                                                                         all_outputs_train,
-                                                                         distance_type=params.distance_type)
-    signs_matrix = metric_learning_utils.get_signs_matrix(all_labels_train,
-                                                          all_labels_train)
-
-    signs_matrix_for_histogramm_loss = metric_learning_utils.get_signs_matrix_for_histogramm_loss(all_labels_train,
-                                                                                                  all_labels_train)
-
-    print('cosine_similarity_matrix constant ', cosine_similarity_matrix)
-    print('signs_matrix ', signs_matrix)
     if params.learn_stage_1:
         # *********
         # Stage 1
@@ -234,15 +207,16 @@ def visual_similarity_learning(network, train_loader, test_loader):
         metric_learning.metric_learning(all_outputs_train, all_labels_train,
                                         similarity_network=similarity_learning_network, start_epoch=0,
                                         optimizer=optimizer_for_similarity_learning, lr_scheduler=exp_lr_scheduler,
-                                        criterion=nn.MSELoss(), stage=1, all_outputs_test=all_outputs_test,
-                                        all_labels_test=all_labels_test)
+                                        criterion=nn.MSELoss(), stage=1,
+                                        all_outputs_test=all_outputs_test, all_labels_test=all_labels_test)
 
     print('Recover similarity network before the 2 stage')
-    similarity_learning_network = utils.load_network_from_checkpoint(network=similarity_learning_network,
-                                                                     epoch=params.default_recovery_epoch_for_similarity,
-                                                                     name_prefix_for_saved_model=
-                                                                     params.name_prefix_for_similarity_saved_model,
-                                                                     stage=1)
+    similarity_learning_network = utils.load_network_from_checkpoint(
+        network=similarity_learning_network,
+        epoch=params.default_recovery_epoch_for_similarity,
+        name_prefix_for_saved_model=params.name_prefix_for_similarity_saved_model,
+        stage=1
+    )
     # for epoch in range(0, 100, 10):
     #    print('Recover similarity network before the 2 stage ---- epoch %d', epoch)
     #    similarity_learning_network = utils.load_network_from_checkpoint(network=similarity_learning_network,
@@ -252,38 +226,19 @@ def visual_similarity_learning(network, train_loader, test_loader):
     #                                                                 stage=1)
 
     print('Evaluation on train after the stage 1')
-    recall_at_k = test.recall_test_for_representation(k=params.k_for_recall, all_outputs=all_outputs_train,
-                                                      all_labels=all_labels_train,
-                                                      similarity_network=similarity_learning_network)
-
-    # reorder outputs and labels for histogramm loss for UKB!!!!!!!
-    if params.sampling_for_similarity:
-        all_labels_train, indices = torch.sort(all_labels_train)
-        print('all_labels_train sorted ', all_labels_train[:25])
-        # print('indices ', indices)
-        all_outputs_train = all_outputs_train[indices.cuda()]
-        print('all_outputs_train sorted ', all_outputs_train)
-
-    print('Evaluation on train after the stage 1 and reordering!')
-    recall_at_k = test.recall_test_for_representation(k=params.k_for_recall, all_outputs=all_outputs_train,
-                                                      all_labels=all_labels_train,
-                                                      similarity_network=similarity_learning_network)
-
+    recall_at_k = test.recall_test_for_representation(
+        k=params.k_for_recall,
+        all_outputs=all_outputs_train,
+        all_labels=all_labels_train,
+        similarity_network=similarity_learning_network
+    )
     print('Evaluation on test after the stage 1')
-    recall_at_k = test.recall_test_for_representation(k=params.k_for_recall, all_outputs=all_outputs_test,
-                                                      all_labels=all_labels_test,
-                                                      similarity_network=similarity_learning_network)
-    # reorder outputs and labels for histogramm loss for UKB!!!!!!!
-    if params.sampling_for_similarity:
-        all_labels_test, indices = torch.sort(all_labels_test)
-        print('all_labels_test sorted ', all_labels_test)
-        # print('indices ', indices)
-        all_outputs_test = all_outputs_test[indices.cuda()]
-        print('all_outputs_test sorted ', all_outputs_test)
-    print('Evaluation on test after the stage 1 and reordering!')
-    recall_at_k = test.recall_test_for_representation(k=params.k_for_recall, all_outputs=all_outputs_test,
-                                                      all_labels=all_labels_test,
-                                                      similarity_network=similarity_learning_network)
+    recall_at_k = test.recall_test_for_representation(
+        k=params.k_for_recall,
+        all_outputs=all_outputs_test,
+        all_labels=all_labels_test,
+        similarity_network=similarity_learning_network
+    )
 
     # *********
     # Stage 2
@@ -348,7 +303,7 @@ def main():
         network.fc = torch.nn.Sequential()
         network.fc.add_module('fc', nn.Linear(num_ftrs, params.num_classes))
         network.fc.add_module('l2normalization',
-                              networks_and_layers.l2_normalization.L2Normalization())  # need normalization for histogramm loss
+                              networks_and_layers.l2_normalization.L2Normalization())  # need normalization for histogram loss
         network = network.cuda()
         print(network)
 

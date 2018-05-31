@@ -1,4 +1,4 @@
-# Lera's implementation of the histogramm loss
+# Lera's implementation of the histogram loss
 
 
 import torch

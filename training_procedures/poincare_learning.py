@@ -8,7 +8,7 @@ from torch.autograd import Variable
 
 import utils
 from evaluation import test
-from losses import histogramm_loss_for_similarity, margin_loss_for_similarity
+from losses import histogram_loss_for_similarity, margin_loss_for_similarity
 from utils import metric_learning_utils, params
 
 
@@ -42,7 +42,7 @@ def metric_learning_poincare(train_loader, network, start_epoch, lr_scheduler,
 
     criterion = torch.nn.MSELoss()
     criterion_margin = margin_loss_for_similarity.MarginLossForSimilarity()
-    criterion_hist = histogramm_loss_for_similarity.HistogramLossForSimilarity(150)
+    criterion_hist = histogram_loss_for_similarity.HistogramLossForSimilarity(150)
 
     for epoch in range(start_epoch,
                        params.number_of_epochs_for_metric_learning):  # loop over the dataset multiple times
@@ -90,8 +90,8 @@ def metric_learning_poincare(train_loader, network, start_epoch, lr_scheduler,
                         loss = criterion_margin(similarity_outputs.view(-1, 1),
                                                 Variable(signs_for_pairs.contiguous().view(-1, 1)))
 
-                    if params.loss_for_similarity == 'histogramm':
-                        signs_for_pairs = metric_learning_utils.get_signs_matrix_for_histogramm_loss(labels_i,
+                    if params.loss_for_similarity == 'histogram':
+                        signs_for_pairs = metric_learning_utils.get_signs_matrix_for_histogram_loss(labels_i,
                                                                                                      labels_j)
                         loss = criterion_hist(similarity_outputs.view(params.batch_size_for_similarity,
                                                                       params.batch_size_for_similarity),
@@ -103,21 +103,15 @@ def metric_learning_poincare(train_loader, network, start_epoch, lr_scheduler,
         # print statistics
         if i == 0:
             current_batch_loss = loss.data[0]
-            print('[ephoch %d, itteration in the epoch %5d] loss: %.30f' %
-                          (epoch + 1, i + 1, current_batch_loss))
+            print('[epoch %d, iteration in the epoch %5d] loss: %.30f' % (epoch + 1, i + 1, current_batch_loss))
             r_loss.append(current_batch_loss)
 
         iterations.append(total_iteration + i)
         options = dict(legend=['loss for stage ' + str(stage)])
-        loss_plot = vis.line(Y=np.array(r_loss), X=np.array(iterations),
-                             # , update='append',
-                             win=loss_plot, opts=options)
+        loss_plot = vis.line(Y=np.array(r_loss), X=np.array(iterations), win=loss_plot, opts=options)
 
         if epoch % 10 == 0:
             epochs.append(epoch)
-            # print the quality metric
-            # Here evaluation is heavy so we do it only every 10 epochs
-            # print('similarity_network ', similarity_network)
             gc.collect()
 
             print('Evaluation on train internal')

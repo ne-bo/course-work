@@ -1,8 +1,8 @@
 import torch
 from torch import nn as nn
 
+from classification_and_representation.spoc import compute_spoc_by_outputs
 from networks_and_layers.l2_normalization import L2Normalization
-from utils.spoc import compute_spoc_by_outputs
 
 
 class Spoc(nn.Module):

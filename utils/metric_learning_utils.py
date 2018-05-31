@@ -100,7 +100,7 @@ def myfunc(a):
         return -1.0
 
 
-def myfunc_for_histogramm_loss(a):
+def myfunc_for_histogram_loss(a):
     # we should map 0 --> 1 and non-zero --> 0
     if a == 0.0:
         return 1
@@ -120,26 +120,33 @@ def get_signs_matrix(labels1, labels2):
     return signs
 
 
-def get_signs_matrix_for_histogramm_loss(labels1, labels2):
+def get_signs_matrix_for_histogram_loss(labels1, labels2):
     distances_between_labels = get_distance_matrix(labels1.unsqueeze(1).float(),
                                                    labels2.unsqueeze(1).float(),
                                                    distance_type='euclidean')
     # print('distances_between_labels ', distances_between_labels)
     # we should map 0 --> 1 and non-zero --> 0
-    vfunc = np.vectorize(myfunc_for_histogramm_loss)
+    vfunc = np.vectorize(myfunc_for_histogram_loss)
     signs = torch.from_numpy(vfunc(distances_between_labels.cpu().numpy())).byte().cuda()
     # print('signs ', signs)
     return signs
 
 
-def get_indices_for_loss(labels_matrix):
-    indices_of_positive_pairs = torch.from_numpy(np.where(labels_matrix.cpu().numpy() == 1)[0])
-    indices_of_negative_pairs = torch.from_numpy(np.where(labels_matrix.cpu().numpy() == 0)[0])
-    number_of_positive_pairs = indices_of_positive_pairs.shape[0]
-    number_of_negative_pairs = indices_of_negative_pairs.shape[0]
-    if number_of_negative_pairs >= number_of_positive_pairs:
-        permutation = torch.randperm(number_of_negative_pairs)
-        indices_of_negative_pairs = indices_of_negative_pairs[permutation]
-        indices_of_negative_pairs = indices_of_negative_pairs[:number_of_positive_pairs]
-    indices_for_loss = torch.cat((indices_of_positive_pairs, indices_of_negative_pairs), dim=0)
+def get_indices_for_loss(labels_matrix, negative_pair_sign=0):
+    if 1 in labels_matrix.cpu().numpy():
+        indices_of_positive_pairs = torch.from_numpy(np.where(labels_matrix.cpu().numpy() == 1)[0])
+        indices_of_negative_pairs = torch.from_numpy(np.where(labels_matrix.cpu().numpy() == negative_pair_sign)[0])
+        number_of_positive_pairs = indices_of_positive_pairs.shape[0]
+        number_of_negative_pairs = indices_of_negative_pairs.shape[0]
+        # print('number_of_positive_pairs ', number_of_positive_pairs)
+        # print('number_of_negative_pairs ', number_of_negative_pairs)
+        # print('indices_of_positive_pairs ', indices_of_positive_pairs)
+        if number_of_negative_pairs >= number_of_positive_pairs:
+            permutation = torch.randperm(number_of_negative_pairs)
+            indices_of_negative_pairs = indices_of_negative_pairs[permutation]
+            indices_of_negative_pairs = indices_of_negative_pairs[:number_of_positive_pairs]
+        indices_for_loss = torch.cat((indices_of_positive_pairs, indices_of_negative_pairs), dim=0)
+        # print('indices_for_loss ', indices_for_loss)
+    else:
+        indices_for_loss = None
     return indices_for_loss

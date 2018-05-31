@@ -11,7 +11,6 @@ class AllPairs(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
 
-
         if cuda:
             self.fc1 = nn.Linear(self.in_features, self.in_features).cuda()
             self.fc2 = nn.Linear(self.in_features, self.in_features).cuda()
@@ -20,7 +19,6 @@ class AllPairs(nn.Module):
             self.fc1 = nn.Linear(self.in_features, self.in_features)
             self.fc2 = nn.Linear(self.in_features, self.in_features)
             self.fc3 = nn.Linear(self.in_features, self.out_features)
-
 
         if self.l1_initialization:
             self.fc1.weight.data = torch.from_numpy(np.eye(self.fc1.weight.size(0))).float()
@@ -57,7 +55,8 @@ class AllPairs(nn.Module):
 
 
 class EffectiveSimilarityNetwork(nn.Module):
-    def __init__(self, number_of_input_features, number_of_output_neurons=1, l1_initialization=False, cuda=True):
+    def __init__(self, number_of_input_features, number_of_output_neurons=1,
+                 l1_initialization=False, cuda=True, add_dropout=False):
         super(EffectiveSimilarityNetwork, self).__init__()
 
         ##################################################################
@@ -95,6 +94,10 @@ class EffectiveSimilarityNetwork(nn.Module):
 
         self.fc3 = nn.Linear(self.number_of_hidden_neurons_for_2_fully_connected,
                              self.number_of_output_neurons)
+
+        self.add_dropout = add_dropout
+        self.dropout = torch.nn.Dropout()
+
         if l1_initialization:
             self.fc2.weight.data = torch.from_numpy(np.eye(self.fc2.weight.size(0))).float()
             self.fc2.bias.data.fill_(0.0)
@@ -105,7 +108,6 @@ class EffectiveSimilarityNetwork(nn.Module):
             #print('self.fc2.weight ', self.fc2.weight)
             #print('self.fc3.weight ', self.fc3.weight)
 
-
     def forward(self, x):
         x = F.relu(self.fc1(x))
         #print('x after the all pairs layer', x)
@@ -113,6 +115,8 @@ class EffectiveSimilarityNetwork(nn.Module):
         #reg = torch.nn.Dropout(p=0.5)
         #y = x
         #print('x after the first linear layer', x, ' ', y.sum())
+        if self.add_dropout:
+            x = self.dropout(x)
         x = self.fc3(x)
 
         #print('x after fc3 ', x.view(params.batch_size_for_similarity, params.batch_size_for_similarity))

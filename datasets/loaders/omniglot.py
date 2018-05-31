@@ -44,7 +44,7 @@ def get_filenames_and_labels(data_folder, test_or_train='test'):
             # print('labels[i]', labels[i].dtype)
         labels = np.array(labels)
 
-    for i in range(100000):
+    for i in range(10000):
         path = data_folder + ('natasha_omniglot_%s/%d.jpg' % (test_or_train, i))
         images_paths.append(path)
         images_indices.append(i)
@@ -193,7 +193,7 @@ def download_Omniglot_for_representation(data_folder, image_size):
     print('batch_sampler_test ', batch_sampler_test)
 
     print('************************************************')
-    print('    Create train loared')
+    print('    Create train loader')
     print('************************************************')
     train_loader = data.DataLoader(
         new_train_dataset,
@@ -203,17 +203,8 @@ def download_Omniglot_for_representation(data_folder, image_size):
 
     print('train_loader ', train_loader.__iter__().collate_fn)
     print('************************************************')
-    print('    Create test loared')
+    print('    Create test loafer')
     print('************************************************')
-
-    # test_loader = data.DataLoader(
-    #     new_test_dataset,
-    #     batch_size=params.batch_size_for_binary_classification,
-    #     drop_last=True,  # we need to drop last batch because it can had length less than k
-    #     # and we won't be able to calculate recall at k
-    #     shuffle=True,
-    #     num_workers=2
-    # )
 
     test_loader = data.DataLoader(
         new_test_dataset,

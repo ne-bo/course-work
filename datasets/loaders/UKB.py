@@ -136,6 +136,7 @@ def create_new_train_and_test_datasets(transform_train, transform_test, data_fol
 
     return new_test_dataset, new_train_dataset
 
+
 def download_UKB_for_representation(data_folder):
     transform_train, transform_test = create_transformations_for_test_and_train()
     new_test_dataset, new_train_dataset = create_new_train_and_test_datasets(transform_train, transform_test,
@@ -173,5 +174,25 @@ def download_UKB_for_representation(data_folder):
     print('new_train_dataset.images_paths', new_train_dataset.images_paths)
     print('new_train_dataset.images_labels', new_train_dataset.images_labels)
     print('ful batch size = ', len(new_train_dataset.test_labels))
+
+    return train_loader, test_loader
+
+
+def download_UKB_for_evaluation_or_spoc(data_folder):
+    transform_train, transform_test = create_transformations_for_test_and_train()
+    new_test_dataset, new_train_dataset = create_new_train_and_test_datasets(transform_train, transform_test,
+                                                                             data_folder)
+
+    # loaders with NO shuffling!!!!
+    train_loader = data.DataLoader(new_train_dataset,
+                                   batch_size=params.batch_size_for_representation,
+                                   num_workers=2)
+    print('loaders with NO shuffling train_loader.batch_size = ', train_loader.batch_size,
+          ' loaders with NO shuffling train_loader.batch_sampler.batch_size =', train_loader.batch_sampler.batch_size,
+
+          ' loaders with NO shuffling train_loader.dataset ', train_loader.dataset)
+    test_loader = data.DataLoader(new_test_dataset,
+                                  batch_size=params.batch_size_for_representation,
+                                  num_workers=2)
 
     return train_loader, test_loader

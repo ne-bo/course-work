@@ -10,12 +10,12 @@ from torchvision import models
 
 import omniglot
 import utils
+from classification_and_representation.spoc import compute_spoc_by_outputs, learn_PCA_matrix_for_spocs_with_sklearn
 from datasets.loaders import omniglot
 from networks_and_layers.convolution_spoc_metric_network import ConvolutionSpocMetric
 from networks_and_layers.convolution_spoc_network import ConvolutionSpoc
 from training_procedures import binary_classification_learning, poincare_learning
 from utils import metric_learning_utils, params
-from utils.spoc import compute_spoc_by_outputs, learn_PCA_matrix_for_spocs_with_sklearn
 from utils.utils import get_layer_with_number
 
 

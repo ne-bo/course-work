@@ -1,27 +1,18 @@
 import cProfile
 import datetime
-import io
-import pstats
 
 import numpy as np
 import visdom
 from torch.autograd import Variable
-from torch.optim import lr_scheduler
 
 import utils
 from evaluation import test
-from utils import metric_learning_utils, params
+from utils import metric_learning_utils, params, utils
 
 
-def learning_process(train_loader,
-                     network,
-                     criterion,
-                     test_loader,
-                     all_outputs_test, all_labels_test,
-                     mode,
-                     optimizer=None,
-                     start_epoch=0,
-                     lr_scheduler=lr_scheduler):
+def learning_process(train_loader, network, criterion,
+                     test_loader, mode, optimizer=None, start_epoch=0,
+                     lr_scheduler=None):
     vis = visdom.Visdom()
     r_loss = []
     iterations = []
@@ -54,12 +45,6 @@ def learning_process(train_loader,
         #    train_loader_for_classification, test_loader_for_classification = cifar.download_CIFAR100()
 
         for i, data in enumerate(train_loader, 0):
-            # print('i = ', i)
-            # get the inputs
-            # inputs are [torch.FloatTensor of size 4x3x32x32]
-            # labels are [torch.LongTensor of size 4]
-            # here 4 is a batch size and 3 is a number of channels in the input images
-            # 32x32 is a size of input image
             inputs, labels = data
 
             # wrap them in Variable
@@ -79,16 +64,13 @@ def learning_process(train_loader,
             # print statistics
             current_batch_loss = loss.data[0]
             if i % params.skip_step == 0:  # print every 2000 mini-batches
-                print('[ephoch %d, itteration in the epoch %5d] loss: %.30f' %
-                      (epoch + 1, i + 1, current_batch_loss))
+                print('[epoch %d, iteration in the epoch %5d] loss: %.30f' % (epoch + 1, i + 1, current_batch_loss))
 
                 r_loss.append(current_batch_loss)
                 iterations.append(total_iteration + i)
 
                 options = dict(legend=['loss for' + mode])
-                loss_plot = vis.line(Y=np.array(r_loss), X=np.array(iterations),
-                                     # , update='append',
-                                     win=loss_plot, opts=options)
+                loss_plot = vis.line(Y=np.array(r_loss), X=np.array(iterations), win=loss_plot, opts=options)
 
         if epoch % 10 == 0:
             # print the train accuracy at every epoch
@@ -101,21 +83,18 @@ def learning_process(train_loader,
                 # we should recalculate all outputs before the evaluation because our network changed during the trainig
                 all_outputs_test, all_labels_test = metric_learning_utils.get_all_outputs_and_labels(test_loader,
                                                                                                      network)
-                recall_at_k = test.recall_test_for_representation(k=params.k_for_recall, all_outputs=all_outputs_test,
-                                                                  all_labels=all_labels_test)
-            utils.save_checkpoint(network=network,
-                                  optimizer=optimizer,
-                                  filename=name_prefix_for_saved_model + '-%d' % epoch,
-                                  epoch=epoch)
+                recall_at_k = test.recall_test_for_representation(
+                    k=params.k_for_recall,
+                    all_outputs=all_outputs_test,
+                    all_labels=all_labels_test
+                )
+            utils.save_checkpoint(
+                network=network,
+                optimizer=optimizer,
+                filename=name_prefix_for_saved_model + '-%d' % epoch,
+                epoch=epoch
+            )
         total_iteration = total_iteration + i
         print('total_iteration = ', total_iteration)
-
-        pr.disable()
-        # s = io.FileIO('profiler-statistic')
-        s = io.StringIO()
-        sortby = 'tottime'
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        # ps.print_stats()
-        # print(s.getvalue())
 
     print('Finished Training')

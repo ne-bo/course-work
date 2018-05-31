@@ -1,14 +1,16 @@
 <component name="ProjectDictionaryState">
   <dictionary name="natasha">
     <words>
-      <w>avgpool</w>
-      <w>cifar</w>
-      <w>conv</w>
-      <w>downsample</w>
-      <w>inplanes</w>
-      <w>relu</w>
-      <w>resnet</w>
-      <w>softmax</w>
+      <w>alexnet</w>
+      <w>convolutional</w>
+      <w>datasets</w>
+      <w>filenames</w>
+      <w>omniglot</w>
+      <w>overfitting</w>
+      <w>pretraining</w>
+      <w>spoc</w>
+      <w>spocs</w>
+      <w>subfolder</w>
     </words>
   </dictionary>
 </component>

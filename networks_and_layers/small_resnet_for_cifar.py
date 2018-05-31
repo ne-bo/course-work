@@ -117,7 +117,7 @@ class SmallResnet(nn.Module):
         x = x.view(x.size(0), -1)
         x = self.fc(x)
 
-        x = self.norm(x)  # added in order to make histogramm loss work
+        x = self.norm(x)  # added in order to make histogram loss work
 
         return x
 
@@ -195,13 +195,8 @@ def test_on_cifar_10():
     #
     ##################################################################
 
-    learning.learning_process(train_loader=train_loader,
-                              network=network,
-                              criterion=nn.CrossEntropyLoss(),
-                              test_loader=test_loader,
-                              mode=params.mode_classification,
-                              optimizer=optimizer,
-                              start_epoch=restore_epoch,
-                              lr_scheduler=multi_lr_scheduler)
+    learning.learning_process(train_loader=train_loader, network=network, criterion=nn.CrossEntropyLoss(),
+                              test_loader=test_loader, mode=params.mode_classification, optimizer=optimizer,
+                              start_epoch=restore_epoch, lr_scheduler=multi_lr_scheduler)
 
 # test_on_cifar_10()
