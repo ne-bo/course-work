@@ -14,7 +14,7 @@ from classification_and_representation.spoc import compute_spoc_by_outputs, lear
 from datasets.loaders import omniglot
 from networks_and_layers.convolution_spoc_metric_network import ConvolutionSpocMetric
 from networks_and_layers.convolution_spoc_network import ConvolutionSpoc
-from training_procedures import binary_classification_learning, poincare_learning
+from training_procedures import binary_classification_learning
 from utils import metric_learning_utils, params
 from utils.utils import get_layer_with_number
 
@@ -128,8 +128,8 @@ def centaurus():
     #
     ##################################################################
 
-    poincare_learning.metric_learning_poincare(train_loader, network, start_epoch, lr_scheduler=simple_scheduler,
-                             stage=1, test_loader=test_loader)
+    # poincare_learning.metric_learning_poincare(train_loader, network, start_epoch, lr_scheduler=simple_scheduler,
+    #                         stage=1, test_loader=test_loader)
 
     print('\n\nStart binary classification ')
     binary_classification_learning.binary_learning(

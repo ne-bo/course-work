@@ -44,7 +44,7 @@ def binary_learning(train_loader,
 
             labels_matrix = utils.get_labels_matrix(labels, labels).view(-1, 1)
 
-            indices_for_loss = get_indices_for_loss(labels_matrix)
+            indices_for_loss = get_indices_for_loss(labels_matrix, negative_pair_sign=0)
 
             labels_matrix = labels_matrix[indices_for_loss]
             labels_matrix = Variable(labels_matrix).cuda()
@@ -56,7 +56,8 @@ def binary_learning(train_loader,
             outputs = network(Variable(inputs).cuda())
 
             outputs = outputs[indices_for_loss.cuda(), :]
-
+            print('outputs ', outputs)
+            print('labels_matrix.long().view(-1, 1).squeeze() ', labels_matrix.long().view(-1, 1).squeeze())
             loss = criterion(outputs, labels_matrix.long().view(-1, 1).squeeze())
 
             loss.backward()
