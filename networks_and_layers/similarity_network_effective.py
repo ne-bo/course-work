@@ -55,8 +55,8 @@ class AllPairs(nn.Module):
 
 
 class EffectiveSimilarityNetwork(nn.Module):
-    def __init__(self, number_of_input_features, number_of_output_neurons=1,
-                 l1_initialization=False, cuda=True, add_dropout=False):
+    def __init__(self, number_of_input_features, number_of_output_neurons=1, l1_initialization=False, cuda=True,
+                 add_dropout=False, add_batchnorm=False):
         super(EffectiveSimilarityNetwork, self).__init__()
 
         ##################################################################
@@ -98,6 +98,9 @@ class EffectiveSimilarityNetwork(nn.Module):
         self.add_dropout = add_dropout
         self.dropout = torch.nn.Dropout()
 
+        self.add_batchnorm = add_batchnorm
+        self.batchnorm = nn.BatchNorm1d(num_features=self.number_of_hidden_neurons_for_2_fully_connected)
+
         if l1_initialization:
             self.fc2.weight.data = torch.from_numpy(np.eye(self.fc2.weight.size(0))).float()
             self.fc2.bias.data.fill_(0.0)
@@ -110,14 +113,19 @@ class EffectiveSimilarityNetwork(nn.Module):
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
-        #print('x after the all pairs layer', x)
+
         x = F.relu(self.fc2(x))
-        #reg = torch.nn.Dropout(p=0.5)
-        #y = x
-        #print('x after the first linear layer', x, ' ', y.sum())
+
+        if self.add_batchnorm:
+            x = self.batchnorm(x)
+
         if self.add_dropout:
             x = self.dropout(x)
+
         x = self.fc3(x)
+
+        # if self.add_dropout:
+        #    x = self.dropout(x)
 
         #print('x after fc3 ', x.view(params.batch_size_for_similarity, params.batch_size_for_similarity))
         return x

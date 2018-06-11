@@ -12,8 +12,7 @@ class ConvolutionSpocMetric(nn.Module):
         self.number_of_output_neurons = number_of_output_neurons
         self.metric_part = EffectiveSimilarityNetwork(
             number_of_input_features=self.convolution_spoc_part.desired_dimension_for_spoc,
-            number_of_output_neurons=self.number_of_output_neurons
-        ).cuda()
+            number_of_output_neurons=self.number_of_output_neurons).cuda()
 
     def forward(self, input):
         output = self.convolution_spoc_part(input)

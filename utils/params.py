@@ -11,7 +11,7 @@ batch_size_for_representation = 4 # here 27 is maximum if we want
 
 # for equal number of positive and negative examples
 number_of_samples_with_the_same_label_in_the_batch = (batch_size_for_representation + 1)/2
-batch_size_for_similarity = 170
+batch_size_for_similarity = 200
 
 data_folder = "./data"
 num_classes = 200
@@ -79,9 +79,9 @@ learn_representation = False
 
 recover_representation_net_before_similarity = False
 default_recovery_epoch_for_similarity = 100
-learn_stage_1 = False
+learn_stage_1 = True
 learn_stage_2 = True
-diagonal_sampling_for_similarity = True  # corresponds to the "diagonal" strategy
+diagonal_sampling_for_similarity = False  # corresponds to the "diagonal" strategy
 equal_sampling_for_similarity = False  # corresponds to the "equal" strategy
 loss_for_similarity = 'delta'  # possible values 'histogram', 'margin', 'delta'
 
@@ -96,7 +96,7 @@ loss_for_similarity = 'delta'  # possible values 'histogram', 'margin', 'delta'
 
 default_recovery_epoch_for_binary_classification = 100
 learning_rate_for_binary_classification = 0.01
-batch_size_for_binary_classification = 270
+batch_size_for_binary_classification = 4  # 4 for spoc creating before any training
 number_of_samples_with_the_same_label_in_the_batch_for_binary = 9 * batch_size_for_binary_classification / 10
 momentum_for_binary_classification = 0.9
 recover_binary_classification = False

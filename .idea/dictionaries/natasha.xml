@@ -2,8 +2,10 @@
   <dictionary name="natasha">
     <words>
       <w>alexnet</w>
+      <w>batchnorm</w>
       <w>convolutional</w>
       <w>datasets</w>
+      <w>diag</w>
       <w>filenames</w>
       <w>omniglot</w>
       <w>overfitting</w>
@@ -11,6 +13,8 @@
       <w>spoc</w>
       <w>spocs</w>
       <w>subfolder</w>
+      <w>submatrices</w>
+      <w>yandex</w>
     </words>
   </dictionary>
 </component>

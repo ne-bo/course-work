@@ -4,7 +4,7 @@ import torchvision.models as models
 from sklearn.decomposition import PCA
 from torch.autograd import Variable
 
-from datasets.loaders import UKB
+from datasets.loaders import UKB, omniglot
 from evaluation import test
 from networks_and_layers.l2_normalization import L2Normalization
 from utils import params
@@ -43,27 +43,34 @@ def compute_spoc_by_outputs(outputs):
     return spocs
 
 
-def save_all_spocs_and_labels(test_loader, network, file_spoc, file_labels, test_or_train):
+def save_all_spocs_and_labels(loader, network, file_spoc, file_labels, test_or_train):
     all_spocs = torch.cuda.FloatTensor()
     all_labels = torch.LongTensor()
     progress = 0
-    for data in test_loader:
+    print('in save')
+    print('loader ', loader.dataset.train_images, '\n', loader.batch_size, '\n', loader.batch_sampler)
+    for data in loader:
         progress = progress + 1
         if progress % 100 == 0:
             print('progress ', progress)
+
         images, labels = data
-        # print('labels in batch ', labels),
+
+        if progress % 100 == 0:
+            print('labels in batch ', labels.shape)
+
         outputs = network(Variable(images).cuda())
 
         spocs = compute_spoc_by_outputs(outputs)
         # print('spocs ', spocs)
         all_spocs = torch.cat((all_spocs, spocs.data), dim=0)
         all_labels = torch.cat((all_labels, labels), dim=0)
-        # print('all_spocs ', all_spocs)
-    print('all_spocs', all_spocs)
-    print('all_labels', all_labels)
+
+    print('before saving')
     torch.save(all_spocs, file_spoc)
     torch.save(all_labels, file_labels)
+    # read_by_parts()
+    # print('all_spocs ', all_spocs)
     return all_spocs, all_labels
 
 
@@ -122,4 +129,58 @@ def get_spoc():
     print("Evaluation on test")
     test.recall_test_for_representation(k=params.k_for_recall, all_outputs=all_spocs_test, all_labels=all_labels_test)
 
+
+def get_spoc_for_omniglot():
+    train_loader, test_loader = omniglot.download_Omniglot_for_representation(
+        data_folder='/media/natasha/Data/course-work-data/',
+        image_size=586  # size as for UKB, for UKB wehave images 640 x 480 and transform them to 586 x 586
+    )
+
+    # this magic code allows us to take the network up to the specific layer even if this layer has no it's own name
+    # here 19 is a number of the desired level in the initial pretrained network
+    vgg = models.vgg16(pretrained=True)
+    print('full vgg ', vgg)
+    representation_network = nn.Sequential(*list(vgg.features.children())[:29]).cuda()
+
+    # batch_size x 512 x 18 x 18 should be batch_size x 512 x 37 x 37
+    print('next(representation_network ', representation_network)
+    all_spocs_train, all_labels_train = save_all_spocs_and_labels(train_loader, representation_network,
+                                                                  'all_spocs_file_train_omniglot',
+                                                                  'all_labels_file_train_omniglot',
+                                                                  'train')
+
+    all_spocs_test, all_labels_test = save_all_spocs_and_labels(test_loader, representation_network,
+                                                                'all_spocs_file_test_omniglot',
+                                                                'all_labels_file_test_omniglot', 'test')
+
+    all_spocs_train, all_labels_train = read_spocs_and_labels('all_spocs_file_train_omniglot',
+                                                              'all_labels_file_train_omniglot')
+    all_spocs_test, all_labels_test = read_spocs_and_labels('all_spocs_file_test_omniglot',
+                                                            'all_labels_file_test_omniglot')
+
+    # PCA
+    PCA_matrix, singular_values = learn_PCA_matrix_for_spocs(Variable(all_spocs_train), 256)
+    torch.save(PCA_matrix, 'PCA_matrix_omniglot')
+    torch.save(singular_values, 'singular_values_omniglot')
+
+    all_spocs_train = torch.div(torch.mm(all_spocs_train, PCA_matrix), singular_values)
+    all_spocs_test = torch.div(torch.mm(all_spocs_test, PCA_matrix), singular_values)
+
+    print('all_spocs_train_after_pca_omniglot', all_spocs_train)
+
+    # L2 - normalization
+    normalization = L2Normalization()
+    all_spocs_train = normalization(Variable(all_spocs_train)).data
+    all_spocs_test = normalization(Variable(all_spocs_test)).data
+
+    torch.save(all_spocs_train, 'all_spocs_file_train_after_pca_omniglot')
+    torch.save(all_spocs_test, 'all_spocs_file_test_after_pca_omniglot')
+
+    print("Evaluation on train")
+    test.recall_test_for_representation(k=params.k_for_recall, all_outputs=all_spocs_train, all_labels=all_labels_train)
+    print("Evaluation on test")
+    test.recall_test_for_representation(k=params.k_for_recall, all_outputs=all_spocs_test, all_labels=all_labels_test)
+
+
 # get_spoc()
+# get_spoc_for_omniglot()

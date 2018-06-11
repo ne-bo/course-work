@@ -81,7 +81,7 @@ def centaurus():
     )
     network = ConvolutionSpocMetric(
         convolution_spoc_part=convolution_spoc_part,
-        number_of_output_neurons=1
+        number_of_output_neurons=2
     ).cuda()
 
     ##################################################################

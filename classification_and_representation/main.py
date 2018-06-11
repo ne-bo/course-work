@@ -174,17 +174,16 @@ def visual_similarity_learning(network, train_loader, test_loader):
         print('Wee take outputs and labels directly from the files')
         representation_network = None
         representation_length = 256
-        all_outputs_train, all_labels_train = spoc.read_spocs_and_labels('all_spocs_file_train_after_pca',
-                                                                         'all_labels_file_train')
-        all_outputs_test, all_labels_test = spoc.read_spocs_and_labels('all_spocs_file_test_after_pca',
-                                                                       'all_labels_file_test')
+        all_outputs_train, all_labels_train = spoc.read_spocs_and_labels('all_spocs_file_train_after_pca_omniglot',
+                                                                         'all_labels_file_train_omniglot')
+        all_outputs_test, all_labels_test = spoc.read_spocs_and_labels('all_spocs_file_test_after_pca_omniglot',
+                                                                       'all_labels_file_test_omniglot')
 
     print('representation_length = ', representation_length)
     similarity_learning_network = similarity_network_effective.EffectiveSimilarityNetwork(
-        number_of_input_features=representation_length,
-        l1_initialization=False,
-        add_dropout=True
-    ).cuda()
+        number_of_input_features=representation_length, l1_initialization=False,
+        add_dropout=True,
+        add_batchnorm=False).cuda()
 
     # print('Recover similarity network before the 1 stage')
     # similarity_learning_network = utils.load_network_from_checkpoint(network=similarity_learning_network,
@@ -199,6 +198,22 @@ def visual_similarity_learning(network, train_loader, test_loader):
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_for_similarity_learning,
                                            step_size=params.learning_rate_decay_epoch,
                                            gamma=params.learning_rate_decay_coefficient_for_similarity)
+
+    # get signs matrix for omniglot
+    utils.get_labels_matrix_fast(all_labels_train, all_labels_train)
+    utils.get_labels_matrix_fast(all_labels_test, all_labels_test)
+    print("Evaluation on train on raws spocs")
+    test.recall_test_for_representation(k=params.k_for_recall,
+                                        all_outputs=all_outputs_train, all_labels=all_labels_train,
+                                        several_labels=True)
+    test.MAP_test_for_representation(k=params.k_for_recall,
+                                     all_outputs=all_outputs_train, all_labels=all_labels_train)
+    print("Evaluation on test on raws spocs")
+    test.recall_test_for_representation(k=params.k_for_recall,
+                                        all_outputs=all_outputs_test, all_labels=all_labels_test,
+                                        several_labels=True)
+    test.MAP_test_for_representation(k=params.k_for_recall,
+                                     all_outputs=all_outputs_test, all_labels=all_labels_test)
 
     if params.learn_stage_1:
         # *********

@@ -4,28 +4,259 @@
 %%
 
 % Preamble
-\documentclass[10pt,a4paper]{article}
+\documentclass[a4paper,12pt]{extreport}
 
-\usepackage{amsmath, amsthm, amssymb, amsfonts}
+\usepackage{extsizes}
+\usepackage{cmap} % для кодировки шрифтов в pdf
+\usepackage{fontenc}
 %\usepackage{calrsfs}
 
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx} % Allows including images
 \usepackage[final]{hyperref}
 \usepackage{cite}
-\usepackage[margin=0.5in,a4paper]{geometry}
+\usepackage{longtable}
+%\usepackage{pscyr}
 
-\author{Pavlovskaia Natalia}
-\title{Course work report}
 
-% Document
+\usepackage{amssymb,amsfonts,amsmath,amsthm,amstext,dsfont} % математические дополнения от АМС
+\usepackage{indentfirst} % отделять первую строку раздела абзацным отступом тоже
+\usepackage[usenames,dvipsnames]{color} % названия цветов
+\usepackage{makecell}
+\usepackage{multirow} % улучшенное форматирование таблиц
+%\usepackage{ulem} % подчеркивания(вместо обычного emph)
+
+\linespread{1.3} % полуторный интервал
+%\renewcommand{\rmdefault}{ftm} % Times New Roman
+\frenchspacing
+
+%Поля страницы
+\usepackage{geometry}
+\geometry{left=2cm}
+\geometry{right=2cm}
+\geometry{top=2cm}
+\geometry{bottom=2cm}
+
+%Название списка литературы
+\renewcommand\bibname{References}
+
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd{\chapter}{\if@openright\cleardoublepage\else\clearpage\fi}{}{}{}
+\makeatother%to suppress newpages on chapters
+
+
+%О НУМЕРАЦИИ СТРАНИЦ
+%\usepackage{fancyhdr}
+%\pagestyle{fancy}
+%\fancyhf{}
+%\fancyhead[R]{\thepage}
+%\fancyheadoffset{0mm}
+%\fancyfootoffset{0mm}
+%\setlength{\headheight}{17pt}
+%\renewcommand{\headrulewidth}{0pt}
+%\renewcommand{\footrulewidth}{0pt}
+%\fancypagestyle{plain}{
+%    \fancyhf{}
+%    \rhead{\thepage}}
+%\setcounter{page}{5} % начать нумерацию страниц с №5
+
+%О Рисунках и подписях
+\usepackage[tableposition=top]{caption}
+%\usepackage{subcaption}
+%\DeclareCaptionLabelFormat{gostfigure}{Рисунок #2}
+%\DeclareCaptionLabelFormat{gosttable}{Таблица #2}
+%\DeclareCaptionLabelSeparator{gost}{~---~}
+%\captionsetup{labelsep=gost}
+%\captionsetup[figure]{labelformat=gostfigure}
+%\captionsetup[table]{labelformat=gosttable}
+%\renewcommand{\thesubfigure}{\asbuk{subfigure}}
+
+%Заголовки
+\usepackage{titlesec}
+
+\titleformat{\chapter}
+{\Large\bfseries}
+{\thechapter}
+{8pt}{}
+\titlespacing*{\chapter}{0pt}{-\topskip}{15pt}%left-before-after, topskip для того, чтобы не было пустоты сверху
+
+\titleformat{\section}
+{\large\bfseries}
+{\thesection}
+{1em}{}
+\titlespacing*{\section}{0pt}{8pt}{20pt}
+
+\titleformat{\subsection}
+{\normalsize\bfseries}
+{\thesubsection}
+{1em}{}
+
 \begin{document}
-    \maketitle
 
-    \section{Results at the end of the Term 3}\label{sec:resultsAtTheEndOfTheTerm3}
+    %THE Cover Page
+    \begin{titlepage}
 
-    At the end of the Term 3 the paper~\cite{original_paper} was reproduced for the UKB dataset.
-    The result clearly showed overfitting which was in agreement with the original paper.
+        \newcommand{\HRule}{\rule{\linewidth}{0.5mm}} % Defines a new command for the horizontal lines, change thickness here
+
+        \center % Center everything on the page
+
+        %----------------------------------------------------------------------------------------
+        %	HEADING SECTIONS
+        %----------------------------------------------------------------------------------------
+
+        \textsc{\LARGE NATIONAL RESEARCH UNIVERSITY HIGHER SCHOOL OF ECONOMICS}\\[1.5cm] % Name of your university/college
+        \textsc{\Large Faculty of Computer Science}\\[0.5cm] % Major heading such as course name
+        \textsc{\large Department of Data Analysis and Artificial Intelligence}\\[2.7cm] % Minor heading such as course title
+
+        %----------------------------------------------------------------------------------------
+        %	TITLE SECTION
+        %----------------------------------------------------------------------------------------
+
+        %\HRule \\[0.4cm]
+        { \huge \bfseries Images retrieval}\\[2.6cm] % Title of your document
+        %\HRule \\[1.5cm]
+
+        %----------------------------------------------------------------------------------------
+        %	AUTHOR SECTION
+        %----------------------------------------------------------------------------------------
+
+
+        \begin{flushright}
+            \large
+            Natalia Pavlovskaia, SLT\\[1cm] % Your name
+
+            \emph{Scientific Supervisor:} \\
+            Artem Babenko,
+            HSE\\[1cm]% Supervisor's Name
+
+            \emph{Co-Supervisor:} \\
+            Viktor Lempitsky,\\
+            Skoltech \\[2.5cm]
+            % Supervisor's Name
+        \end{flushright}
+
+
+
+        % If you don't want a supervisor, uncomment the two lines below and remove the section above
+        %\Large \emph{Author:}\\
+        %John \textsc{Smith}\\[3cm] % Your name
+
+        %----------------------------------------------------------------------------------------
+        %	DATE SECTION
+        %----------------------------------------------------------------------------------------
+
+        {\large Moscow}\\ % Date, change the \today to a set date if you want to be precise
+        {\large 2018}
+        %----------------------------------------------------------------------------------------
+        %	LOGO SECTION
+        %----------------------------------------------------------------------------------------
+
+        %\includegraphics{Logo}\\[1cm] % Include a department/university logo - this will require the graphicx package
+
+        %----------------------------------------------------------------------------------------
+
+        \vfill
+        % Fill the rest of the page with whitespace
+
+    \end{titlepage}
+    \abstract{In this work we study an approach to the images retrieval task.
+    The main idea is to take some good global descriptors and try to improve their performance.
+    For this purpose we use an additional small fully-connected neural network.
+    This network maps a pair of images descriptors to the non-euclidean pseudo-distance.
+    Than we use this pseudo-distance during the nearest neighbors search.
+    This approach is overfitting-prone.
+    So we try investigate the reasons and reduce the overfitting.}
+
+    \tableofcontents \newpage
+
+    \chapter{Introduction}\label{ch:introduction}
+
+    What is images retrieval task? You have a large database of images and a query image.
+    And you want to find the images in your database which are the most similar to the query image.
+    This can be used in image search engines like Yandex or Google.
+
+    A common algorithms is as follows:
+    \begin{itemize}
+        \item {Map each image to a vector or a set of vectors}
+        \item {Define the distance or similarity measure between the vectors or sets of vectors}
+        \item {Find the nearest neighbors of the query image in the database using this distance or similarity measure}
+        \item {Post-process the retrieval results to get better ranking}
+    \end{itemize}
+
+    In this work we concentrated on the second step. The paper~\cite{original_paper} is taken is a base.
+    We try to reproduce and improve their results.
+    Also, the new dataset is generated and the base approach is tested on this new dataset.
+    \newline
+
+    \chapter{Review}\label{ch:review}
+
+    There is a lot of work done in images retrieval. People play around different things.
+    \newline
+
+    The first thing is a mapping of high-dimensional images to low-dimensional vectors or set of vectors.
+    The results of such mapping are called descriptors.
+
+    If you map one image to one vector this vector is a global descriptor.
+    If you map one image to a set of vectors and corresponding locations on the original image these vectors are local descriptors.
+    In this work we use global descriptors.
+
+    Usually the mapping function for global descriptor is deep convolutional neural network.
+    You can use different architectures of this net, you can take different layers activations as your descriptors.
+    Also, you can use different tricks such as weighting of the specific region of the initial image, PCA for lowering the
+    dimension of the resulting descriptor.
+
+    To get the descriptors you have to train your neural network in the following way.
+    You should push your network map similar images to the close vectors and non similar images to the far vectors.
+    Mankind has invented different loss function to do so.
+    For example histogram loss~\cite{hist}  or margin loss~\cite{margin}.
+
+    Also the sampling strategy during training is important as shown in~\cite{margin}.
+    If pair of images in you dataset consists of similar images it is called positive pair.
+    Otherwise this pair is negative.
+    Usually you have much more negative pairs than positive in your dataset.
+    The balance between positive and negative pairs used for training can significantly influence the final performance.
+
+
+    In this work we take so called SPoC~\cite{spoc} global descriptors as a basis.
+    These descriptors show good performance "out of box" even without any training on your particular dataset
+    (you can take just ImageNet pretrained version).
+    Our goal is improving the performance.
+    It's not interesting to improve the performance of something bad.
+    But improving the performance of good descriptors is challenging enough.
+    \newline
+
+    The second thing is a definition of the distance between the descriptors.
+    Usually people use euclidean distance (or cosine similarity).
+    But in our basis paper~\cite{original_paper} authors suggest the idea of non-linear similarity measure.
+    This measure can be learnt directly from images.
+
+    Another type of non-linear distance is Poincare distance described in~\cite{poincare}.
+
+    \chapter{Main algorithm}\label{ch:resultsAtTheEndOfTheTerm3}
+
+    Our main algorithm is taken from the paper~\cite{original_paper} and reproduced for the UKB and Omniglot datasets
+    (you can found the description of the datasets in~\ref{sec:datasetsDescription}).
+    \newline
+
+    \textbf{Algorithm}
+    \begin{itemize}
+        \item {calculate raw SPoC descriptors using pretrained on ImageNet version of VGG}
+        \item {calculate cosine similarity between these descriptors}
+        \item {evaluate the performance of these descriptors and this similarity measure - this is our baseline, we want to impove it}
+        \item {1 step: feed these descriptors as an input to small neural net, take the cosine similarities as target}
+        \item {2 step: do one the following \begin{itemize}
+                                                \item {add small positive $\Delta$ to cosine similarities for the positive pairs,
+                                                substract small positive $\Delta$ from cosine similarities for the negative pairs,
+                                                use these amended similarities as a new target for the same neural network}
+                                                \item {use histogram or margin loss to optimize the similarity measure calculated by this neural net}
+        \end{itemize}}
+        \item {evaluate the performance of these descriptors and the new similarity measure whic is the output of our small neural net}
+    \end{itemize}
+
+
+    For the UKB dataset there are more experiments results than for Omniglot for now.
+    The result for UKB clearly showed overfitting which was in agreement with the original paper.
 
     It was decided to try the following things:
     \begin{itemize}
@@ -35,7 +266,7 @@
         \item {investigate the overfitting problem for UKB dataset}
     \end{itemize}
 
-    \section{Results at the end of the Term 4}\label{sec:results}
+    \chapter{Results}\label{ch:results}
 
     What was actually done
 
@@ -64,14 +295,16 @@
     During the training we can iterate over batches.
     \newline
 
-    The sampling strategy \textit{all} means that we use all small submatrices of our big matrix. In this case we use
-    much more negative pairs than positive. But I think this is anyway good for the step 1 (just learning cosine similarity).
+    The sampling strategy \textit{all} means that we use all small submatrices of our big matrix.
+    In this case we use much more negative pairs than positive. But I think this is anyway good for the step 1 (just learning cosine similarity).
     From experiments I see that for 2 step it is also good.
     \newline
 
-    The sampling strategy \textit{diagonal} means that we use all only small submatrices on the main diagonal of our big matrix.
-    These batches contain all our positive pairs and some negative pairs. Again we have more negative pairs than positive.
-    But we don't use all possiblenegative examples. This strategy makes training faster and somehow balance positive and negative pairs.
+    The sampling strategy \textit{diag} means that we use all only small submatrices on the main diagonal of our big matrix.
+    These batches contain all our positive pairs and some negative pairs.
+    Again we have more negative pairs than positive.
+    But we don't use all possible negative examples.
+    This strategy makes training faster and somehow balance positive and negative pairs.
     \newline
 
     The sampling strategy \textit{equal} means that we use all only small submatrices on the main diagonal of our big matrix while iterating.
@@ -90,56 +323,80 @@
     So I've tried to regularize somehow our small net for the metric learning.
     \newline
 
-    The regularization \textit{1024 instead of 2048} means that we simply use 2 layers of 1024 hidden neurons instead
+    The regularization \textit{1024} means that we simply use 2 layers of 1024 hidden neurons instead
     of 2 layers of 2048 hidden neurons. As I know decreasing the capacity of the model can help.
     \newline
 
-    The regularization \textit{dropout} means that we insert a dropout layer with $p=0.5$ between our 2 hidden layers.
+    The regularization \textit{dropout}, \textit{dropout x 2} means that we insert a dropout layer with $p=0.5$
+    between our 2 hidden layers of after each hidden layer.
     The best result so far is achieved with this type of regularization and marked in \textbf{bold} in the table.
     \newline
 
-    \begin{table}[h!]
-        \begin{tabular}{|l|l|l|l|l|l|l|}
+    The regularization \textit{batchnorm} means that we insert a batch normalization between our 2 hidden layers.
+    \newline
+
+    \begin{longtable}[h!]{|l|l|l|l|l|l|l|}
+        %\begin{tabular}{|l|l|l|l|l|l|l|}
             \hline
             Dataset & Conv & k & Average recall at k & Average recall at k & Sampling & Regularization       \\
             & part & & Train & Test & strategy &                      \\ \hline
             %--------------------------------------------------------    -     --------------------    ---     ------        -------------------------
-            & & & 0.909657 raw SPoC & 0.839461 raw SPoC & &                      \\ \cline{4-7}
+            & & & \underline{raw SPoC} & \underline{rraw SPoC}  & &                      \\
+            & & & 0.909657 & 0.839461 & &                      \\ \cline{4-7}
+            %--------------------------------------------------------    -     --------------------    ---     ------
+            & & & \underline{1 step}   & \underline{1 step}   & &                      \\
+            & & & 0.872304 & 0.590588 & diag &                      \\
+            & & & 0.781176 & 0.486127 & equal &                      \\
+            & & & 0.835294 & 0.588725 & all &                      \\
+            & & & 0.765196 & 0.535980 & all & 1024 \\
+            & & & 0.888922 & 0.450784 & all & batchnorm \\
+            & & & 0.464510 & 0.405637 & all & dropout              \\
+            & & & 0.000686 & 0.000784 & all & dropout x 2           \\\cline{4-7}
+            %--------------------------------------------------------    -     --------------------    ---     ------
+            & & & \underline{2 step (delta)} & \underline{2 step (delta)} & &                      \\
+            UKB & VGG & 4 & 0.915147 & 0.622059 & diag + diag &                      \\
+            & & & 0.869118 & 0.535735 & diag + equal &                      \\
+            & & & 0.828971 & 0.491765 & equal + equal &                      \\
+            & & & 0.926225 & 0.659118 & all + all &                      \\
+            & & & 0.918971 & 0.644657 & all + all & 1024 \\
+            & & & \textbf{0.938922} & \textbf{0.718235} & all + all & dropout              \\
+            & & & 0.840392 & 0.624216 & all + diag & dropout              \\ \cline{4-7}
+            %--------------------------------------------------------    -     --------------------    ---     ------
+            & & & \underline{2 step (histogram)} & \underline{2 step (histogram)} & &                      \\
+            & & & ??? & ??? & &                      \\ \cline{4-7}
+            & & & \underline{2 step (margin)}    & \underline{2 step (margin)}    & &                      \\
+            & & & ??? & ??? & &                      \\ \hline \hline
+            %--------------------------------------------------------    -     --------------------    ---     ------        -------------------------
+            Dataset & Conv & k & MAP at k & MAP at k & Sampling & Regularization       \\
+            & part & & Train & Test & strategy &                      \\ \hline
+            %--------------------------------------------------------    -     --------------------    ---     ------        -------------------------
+            %-----------------------------------------------------     ---------------------------     -----------------------------
+            & & & \underline{raw SPoC} & \underline{raw SPoC} & &                      \\
+            & & & 0.522958 & 0.546646 & &                      \\\cline{4-7}
+            & & & \underline{1 step}   & \underline{1 step}   & &                      \\
+            & & & ?? & ??? & all & dropout                  \\ \cline{4-7}
 
-            & & & 0.872304 1 step & 0.590588 1 step & diagonal &                      \\
-            & & & 0.781176 1 step & 0.486127 1 step & equal &                      \\
-            & & & 0.835294 1 step & 0.588725 1 step & all &                      \\
-            & & & 0.765196 1 step & 0.535980 1 step & all & 1024 instead of 2048 \\
-            & & & 0.464510 1 step & 0.405637 1 step & all & dropout              \\ \cline{4-7}
-
-            UKB & VGG & 4 & 0.915147 2 step (delta)     & 0.622059 2 step (delta)     & diagonal + diagonal &                      \\
-            & & & 0.869118 2 step (delta)     & 0.535735 2 step (delta)     & diagonal + equal &                      \\
-            & & & 0.828971 2 step (delta)     & 0.491765 2 step (delta)     & equal + equal &                      \\
-            & & & 0.926225 2 step (delta)     & 0.659118 2 step (delta)     & all + all &                      \\
-            & & & 0.918971 2 step (delta)     & 0.644657 2 step (delta)     & all + all & 1024 instead of 2048 \\
-            & & & \textbf{0.938922} 2 step (delta) & \textbf{0.718235} 2 step (delta) & all + all & dropout              \\
-            & & & 0.840392 2 step (delta)     & 0.624216 2 step (delta)     & all + diagonal & dropout              \\ \cline{4-7}
-
-            & & & ??? 2 step (histogram)      & ??? 2 step (histogram)      & &                      \\
-            & & & ??? 2 step (margin)         & ??? 2 step (margin)         & &                      \\ \hline \hline
-            %-----------------------------------------------------     ---------------------------     -------------------------------
-            %             &            &   & raw SPoC                    & raw SPoC                    &                     &                      \\
-            %             &            &   & 1 step                      & 1 step                      &                     &                      \\
-            %    Omniglot & Alexnet    & ? & 2 step (delta)              & 2 step (delta)              &                     &                      \\
-            %             &            &   & 2 step (histogram)          & 2 step (histogram)          &                     &                      \\
-            %             &            &   & 2 step (margin)             & 2 step (margin)             &                     &                      \\ \hline
+            & & & \underline{2 step (delta)}     & \underline{2 step (delta)}     & &                      \\
+            Omniglot & VGG & 4 & ??? & ??? & all + all & dropout                        \\ \cline{4-7}
+            10000 & & & \underline{2 step (histogram)} & \underline{2 step (histogram)} & &                      \\
+            & & & ??? & ??? & &  \\\cline{4-7}
+            & & & \underline{2 step (margin)}    & \underline{2 step (margin)}    & &                      \\
+            & & & ??? & ??? & &  \\\cline{4-7}
+            \hline
             %-----------------------------------------------------         -----------------------    ----     -------------------------------
             %    Omniglot & Alexnet    & ? & Poincare                    & Poincare                    &                     &                      \\ \hline \hline
             Dataset & Conv & & f1 score & f1 score & Sampling & Regularization       \\
             & part & & Train & Test & strategy &                      \\ \hline
-            Omniglot & Alexnet & & ??? binary classification & ??? binary classification & equal &                      \\
+            Omniglot & Alexnet & & \underline{binary} &\underline{binary} & &                      \\
+            & & & \underline{classification} & \underline{classification }& &                      \\
+            & & & ??? & ??? & equal &                      \\
             \hline
-        \end{tabular}
+            %\end{tabular}
         \caption{Results}
         \label{table:main_table}
-    \end{table}
+    \end{longtable}
 
-    \subsection{Comments}\label{subsec:comments}
+    \section{Comments}\label{sec:comments}
 
     The results for the histogram and margin loss are not presented here because they are very poor.
     I suppose that for histogram loss we just don't have enough positive pairs. Each batch contains at most 246 of them.
@@ -151,7 +408,8 @@
     I'll fill all missing rows later.
     \newline
 
-    My future plan:
+    \chapter{Future plan}\label{ch:futurePlan}
+
     \begin{itemize}
         \item {Play more with regularization for UKB. From my point of view this is the most promising thing.}
         \item {Deal with Omniglot dataset not in classification mode but in the same fashion as with UKB. It is promising because of the bigger size
@@ -162,17 +420,21 @@
 
 
 
-    \section{Technical details}\label{sec:technicalDetails}
+    \chapter{Technical details}\label{ch:technicalDetails}
 
-    \textbf{Quality metric for UKB:}
     \begin{itemize}
         \item{$N = $ total number of examples}
         \item{$C_i^k = $ number of correct answers for the $i$-th example among the top $k$}
         \item{$C_i^t = $ total number of correct answers for the $i$-th example among the all examples}
     \end{itemize}
 
-    \[\text{average recall at k} = \frac{1}{N}\sum_{i = 1}^{N}
+    \textbf{Quality metric for UKB:}
+    \[\text{average recall at $k$} = \frac{1}{N}\sum_{i = 1}^{N}
     \frac{C_i^k}{C_i^t}\]
+
+    \textbf{Quality metric for Omniglot:}
+    \[\text{Mean average precision at $k$} = \frac{1}{N}\sum_{i = 1}^{N}
+    \left( \frac{1}{k}\sum_{j = 1}^{k} \frac{C_i^j}{j} \right) \]
 
     \textbf{Technical details:}
     \begin{itemize}
@@ -180,7 +442,7 @@
 
         $170 \times 170$ for UKB,
 
-        $270 \times 270$ for Omniglot}
+        $200 \times 200$ for Omniglot-10000}
         \item{loss function -
 
         nn.MSELoss() for the 1 step,
@@ -197,7 +459,7 @@
         \item{number of epochs - 100}
     \end{itemize}
 
-    \subsection{Datasets description}\label{subsec:datasetsDescription}
+    \section{Datasets description}\label{sec:datasetsDescription}
 
     \begin{table}[h!]
         \begin{tabular}{|l|l|l|r|l|l|}
@@ -205,8 +467,15 @@
             Name & Train size & Test size & Total Number & Number of images & Comments                  \\
             & & & of classes & in each class &                           \\ \hline
             %-----------------------------------------------------------------------------------------------------------------------
-            UKB & 5100 & 5100 & 1275 in train, 1275 in test & 4 & Spocs are calculated once \\ \hline
-            Omniglot & 10000 & 10000 & 964 in train, \space659 in test & 20 & 1-3 symbols per image      \\ \hline
+            UKB & 5100 & 5100 & 1275 in train & 4 & Spocs are calculated once \\
+            & & & 1275 in test & & \\ \hline
+            %-----------------------------------------------------------------------------------------------------------------------
+            Omniglot & 10000 & 10000 & 964 in train & 20 & 1-3 symbols per image      \\
+            & & & 659 in test & &       \\
+            & & & & & average number of \\
+            & & & & & positive pairs is \\
+            & & & & & 43 for train and  \\
+            & & & & & 63 for test  \\ \hline
         \end{tabular}
         \caption{Datasets}
         \label{table:datasets_table}
@@ -216,9 +485,30 @@
     %\includegraphics{}
     \begin{thebibliography}{9}
 
+        \bibitem{spoc}
+        Artem Babenko, Victor Lempitsky.
+        \textit{Aggregating Deep Convolutional Features for Image Retrieval}.
+        2015
+
+        \bibitem{hist}
+        Evgeniya Ustinova, Victor Lempitsky
+        \textit{Learning Deep Embeddings with Histogram Loss}.
+        2016
+
+        \bibitem{margin}
+        Chao-Yuan Wu, R. Manmatha, Alexander J. Smola, Philipp Krähenbühl
+        \textit{Sampling Matters in Deep Embedding Learning}.
+        2017
+
+        \bibitem{poincare}
+        Maximilian Nickel, Douwe Kiela
+        \textit{Poincaré Embeddings for Learning Hierarchical Representations}.
+        2017
+
         \bibitem{original_paper}
         Noa Garsia, George Vogiatzis.
-        \textit{Learning Non-Metric Visual Similarity for Image Retrieval}. 2017
+        \textit{Learning Non-Metric Visual Similarity for Image Retrieval}.
+        2017
         \url{https://arxiv.org/abs/1709.01353}
 
     \end{thebibliography}

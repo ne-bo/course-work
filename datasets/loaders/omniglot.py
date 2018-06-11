@@ -197,7 +197,8 @@ def download_Omniglot_for_representation(data_folder, image_size):
     print('************************************************')
     train_loader = data.DataLoader(
         new_train_dataset,
-        batch_sampler=batch_sampler_train,
+        # batch_sampler=batch_sampler_train,
+        batch_size=params.batch_size_for_binary_classification,  # here we try not to shuffle anything
         num_workers=8
     )
 
@@ -208,7 +209,8 @@ def download_Omniglot_for_representation(data_folder, image_size):
 
     test_loader = data.DataLoader(
         new_test_dataset,
-        batch_sampler=batch_sampler_test,
+        # batch_sampler=batch_sampler_test,
+        batch_size=params.batch_size_for_binary_classification,  # here we try not to shuffle anything
         num_workers=8
     )
     print('test_loader ', test_loader.__iter__().collate_fn)

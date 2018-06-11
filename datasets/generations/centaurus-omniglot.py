@@ -30,7 +30,7 @@ class Character():
 
 def get_list_of_all_possible_characters():
     all_characters = []
-    data_folder = 'omniglot'
+    data_folder = '/media/natasha/Data/course-work-data/omniglot'
     subfolder = 'images_background'
     alphabetes = os.listdir(data_folder + '/' + subfolder)
     print('alphabetes', alphabetes)
@@ -73,7 +73,7 @@ def create_a_new_image_with_selected_characters(list_of_images_of_selected_chara
         randomized_small_image_position_y = \
             np.random.randint(low=0, high=positions_size), np.random.randint(low=0, high=positions_size)
         new_image.paste(out, (randomized_small_image_position_x, randomized_small_image_position_y))
-    new_image = new_image.resize((105, 105))
+    # new_image = new_image.resize((105, 105)) # let's remove resizin,because we need images like for UKB
     return new_image
 
 
@@ -100,7 +100,7 @@ def generate_centaurus_omniglot_dataset(total_number_of_images, maximum_number_o
         for i in tqdm(range(total_number_of_images)):
             image, list_of_labels = generate_one_image(maximum_number_of_characters_on_image,
                                                    list_of_all_possible_characters)
-            image.convert('RGB').save('natasha_omniglot_train/%d.jpg' %i)
+            image.convert('RGB').save('/media/natasha/Data/course-work-data/natasha_omniglot_train/%d.jpg' % i)
             fout.write('%d'% i)
             for label in list_of_labels:
                 fout.write(' ' + label)
