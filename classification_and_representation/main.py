@@ -203,15 +203,15 @@ def visual_similarity_learning(network, train_loader, test_loader):
     utils.get_labels_matrix_fast(all_labels_train, all_labels_train)
     utils.get_labels_matrix_fast(all_labels_test, all_labels_test)
     print("Evaluation on train on raws spocs")
-    test.recall_test_for_representation(k=params.k_for_recall,
-                                        all_outputs=all_outputs_train, all_labels=all_labels_train,
-                                        several_labels=True)
+    # test.recall_test_for_representation(k=params.k_for_recall,
+    #                                     all_outputs=all_outputs_train, all_labels=all_labels_train,
+    #                                     several_labels=True)
     test.MAP_test_for_representation(k=params.k_for_recall,
                                      all_outputs=all_outputs_train, all_labels=all_labels_train)
     print("Evaluation on test on raws spocs")
-    test.recall_test_for_representation(k=params.k_for_recall,
-                                        all_outputs=all_outputs_test, all_labels=all_labels_test,
-                                        several_labels=True)
+    # test.recall_test_for_representation(k=params.k_for_recall,
+    #                                     all_outputs=all_outputs_test, all_labels=all_labels_test,
+    #                                     several_labels=True)
     test.MAP_test_for_representation(k=params.k_for_recall,
                                      all_outputs=all_outputs_test, all_labels=all_labels_test)
 
@@ -240,20 +240,20 @@ def visual_similarity_learning(network, train_loader, test_loader):
     #                                                                 params.name_prefix_for_similarity_saved_model,
     #                                                                 stage=1)
 
-    print('Evaluation on train after the stage 1')
-    recall_at_k = test.recall_test_for_representation(
-        k=params.k_for_recall,
-        all_outputs=all_outputs_train,
-        all_labels=all_labels_train,
-        similarity_network=similarity_learning_network
-    )
-    print('Evaluation on test after the stage 1')
-    recall_at_k = test.recall_test_for_representation(
-        k=params.k_for_recall,
-        all_outputs=all_outputs_test,
-        all_labels=all_labels_test,
-        similarity_network=similarity_learning_network
-    )
+    # print('Evaluation on train after the stage 1')
+    # recall_at_k = test.recall_test_for_representation(
+    #     k=params.k_for_recall,
+    #     all_outputs=all_outputs_train,
+    #     all_labels=all_labels_train,
+    #     similarity_network=similarity_learning_network
+    # )
+    # print('Evaluation on test after the stage 1')
+    # recall_at_k = test.recall_test_for_representation(
+    #     k=params.k_for_recall,
+    #     all_outputs=all_outputs_test,
+    #     all_labels=all_labels_test,
+    #     similarity_network=similarity_learning_network
+    # )
 
     # *********
     # Stage 2

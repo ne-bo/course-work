@@ -42,7 +42,7 @@ def metric_learning(all_outputs_train, all_labels_train,
         signs_matrix = metric_learning_utils.get_signs_matrix_for_histogram_loss(all_labels_train, all_labels_train)
     else:
         # signs_matrix = metric_learning_utils.get_signs_matrix(all_labels_train, all_labels_train)
-        signs_matrix = utils.get_labels_matrix_fast(all_labels_train, all_labels_train, negative_sign=-1)
+        signs_matrix = utils.get_labels_matrix_fast(all_labels_train, all_labels_train, negative_sign=-1).float().cuda()
 
     for epoch in range(start_epoch, params.number_of_epochs_for_metric_learning):
         lr_scheduler.step(epoch=epoch)
@@ -127,6 +127,7 @@ def metric_learning(all_outputs_train, all_labels_train,
                 # and subtract the delta from the distance for negative pairs (with the different labels)
                 if stage == 2:
                     if params.loss_for_similarity == 'delta':
+                        # print('signs_for_pairs ', signs_for_pairs)
                         cosine_similarities_with_deltas = \
                             distance_matrix_effective + params.delta_for_similarity * signs_for_pairs
                         loss = criterion(
@@ -168,21 +169,23 @@ def metric_learning(all_outputs_train, all_labels_train,
             gc.collect()
 
             print('Evaluation on train internal')
-            recall_at_k = test.recall_test_for_representation(
-                k=params.k_for_recall,
-                all_outputs=all_outputs_train,
-                all_labels=all_labels_train,
-                similarity_network=similarity_network
-            )
+            # recall_at_k = test.recall_test_for_representation(
+            #     k=params.k_for_recall,
+            #     all_outputs=all_outputs_train,
+            #     all_labels=all_labels_train,
+            #     similarity_network=similarity_network
+            # )
+            # r_recall.append(recall_at_k)
+            # options = dict(legend=['recall for stage ' + str(stage)])
+            # recall_plot = vis.line(Y=np.array(r_recall), X=np.array(epochs), win=recall_plot, opts=options)
+
             MAP_at_k = test.MAP_test_for_representation(
                 k=params.k_for_recall,
                 all_outputs=all_outputs_train,
                 all_labels=all_labels_train,
                 similarity_network=similarity_network
             )
-            r_recall.append(recall_at_k)
-            options = dict(legend=['recall for stage ' + str(stage)])
-            recall_plot = vis.line(Y=np.array(r_recall), X=np.array(epochs), win=recall_plot, opts=options)
+
 
             r_MAP.append(MAP_at_k)
             options = dict(legend=['MAP for stage ' + str(stage)])
@@ -190,12 +193,12 @@ def metric_learning(all_outputs_train, all_labels_train,
 
 
             print('Evaluation on test internal')
-            recall_at_k = test.recall_test_for_representation(
-                k=params.k_for_recall,
-                all_outputs=all_outputs_test,
-                all_labels=all_labels_test,
-                similarity_network=similarity_network
-            )
+            # recall_at_k = test.recall_test_for_representation(
+            #     k=params.k_for_recall,
+            #     all_outputs=all_outputs_test,
+            #     all_labels=all_labels_test,
+            #     similarity_network=similarity_network
+            # )
             MAP_at_k = test.MAP_test_for_representation(
                 k=params.k_for_recall,
                 all_outputs=all_outputs_test,

@@ -79,7 +79,7 @@ learn_representation = False
 
 recover_representation_net_before_similarity = False
 default_recovery_epoch_for_similarity = 100
-learn_stage_1 = True
+learn_stage_1 = False
 learn_stage_2 = True
 diagonal_sampling_for_similarity = False  # corresponds to the "diagonal" strategy
 equal_sampling_for_similarity = False  # corresponds to the "equal" strategy
